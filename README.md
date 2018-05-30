@@ -1,2 +1,2 @@
-[CTC-1] # ctc
+# ctc
 CTC open source project
