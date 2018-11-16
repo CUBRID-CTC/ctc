@@ -1632,6 +1632,7 @@ extern int ctcp_send_captured_data_result (void *inlink,
                                            int trans_cnt,
                                            void **trans_list)
 {
+    BOOL is_exist = CTC_FALSE;
     BOOL is_ovf = CTC_FALSE;
     int i;
     int result;
@@ -1655,10 +1656,14 @@ extern int ctcp_send_captured_data_result (void *inlink,
     CTCN_LINK *link = (CTCN_LINK *)inlink;
 //    CTCL_TRANS_LOG_LIST ***trans_log_list = (CTCL_TRANS_LOG_LIST ***)trans_list;
     CTCL_TRANS_LOG_LIST *log_item_list;
+    CTCS_SESSION_GROUP *sg = NULL;
     CTCG_LIST_NODE *itr;
 
     /* link validation */
     CTC_COND_EXCEPTION (link == NULL, err_null_link_label);
+
+    sg = ctcs_find_session_group_by_id (sgid);
+    CTC_COND_EXCEPTION (sg == NULL, err_invalid_sgid_label);
 
     /* about process by result code:
      * in this case, acceptable result codes are only two
@@ -1687,6 +1692,19 @@ extern int ctcp_send_captured_data_result (void *inlink,
                 set_col_cnt = 0;
                 write_data_len = 0;
                 next_log_item = log_item->next;
+
+                /* check table_name of log item is registered table */
+                (void)ctcs_sg_is_table_registered (sg, 
+                                                   job_desc, 
+                                                   log_item->table_name, 
+                                                   log_item->db_user, 
+                                                   &is_exist);
+
+                if (is_exist != CTC_TRUE)
+                {
+                    /* skip this log item */
+                    continue;
+                }
 
                 /* 1. transaction id (4 BYTE) */
                 if (ctcn_link_write_four_byte_number (link, (void *)&tid) 
@@ -2128,6 +2146,11 @@ extern int ctcp_send_captured_data_result (void *inlink,
     CTC_EXCEPTION (err_null_link_label)
     {
         result = CTC_ERR_NULL_LINK_FAILED;
+    }
+    CTC_EXCEPTION (err_invalid_sgid_label)
+    {
+        /* ERROR: critical problem, anyway failed */
+        result = CTC_ERR_INVALID_VALUE_FAILED;
     }
     CTC_EXCEPTION (err_make_protocol_header_label)
     {
