@@ -339,8 +339,6 @@ static int ctcs_init_ctrl_session (CTCS_CTRL_SESSION *ctrl_session,
     /* register thread id to job_session */
     ctrl_session->thread = ctrl_thr;
 
-    pthread_join (ctrl_thr, (void **)&thr_ret);
-
     return CTC_SUCCESS;
 
     CTC_EXCEPTION (err_null_link)
@@ -363,6 +361,7 @@ static int ctcs_init_ctrl_session (CTCS_CTRL_SESSION *ctrl_session,
 
 static void *ctcs_ctrl_session_thr_func (void *args)
 {
+    BOOL is_timeout = CTC_FALSE;
     int i;
     int result = 0;
     CTCS_CTRL_SESSION *ctrl_session = (CTCS_CTRL_SESSION *)args;
@@ -372,13 +371,40 @@ static void *ctcs_ctrl_session_thr_func (void *args)
 
     while (ctrl_session->status != CTCS_CTRL_SESSION_CLOSING)
     {
-        result = ctcp_process_protocol (ctrl_session->link,
-                                        ctrl_session->sgid);
+        result = ctcn_link_poll_socket (ctrl_session->link, 
+                                        100 * 1000, 
+                                        &is_timeout);
 
-        CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
-                            err_process_prcl_failed_label);
+        CTC_COND_EXCEPTION (result != CTC_SUCCESS,
+                            err_link_poll_socket_failed_label);
+
+        if (is_timeout == CTC_TRUE)
+        {
+            sleep (1);
+            continue;
+        }
+        else
+        {
+            result = ctcp_process_protocol (ctrl_session->link,
+                                            ctrl_session->sgid);
+
+            CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
+                                err_process_prcl_failed_label);
+        }
     }
 
+    pthread_exit (CTC_SUCCESS);
+
+    CTC_EXCEPTION (err_link_poll_socket_failed_label)
+    {
+        /* DEBUG */
+        fprintf (stderr, 
+                 "session group [%d]'s control session link polling failed.\n",
+                 ctrl_session->sgid);
+        fflush (stderr);
+
+        result = CTC_ERR_NETWORK_FAILED;
+    }
     CTC_EXCEPTION (err_process_prcl_failed_label)
     {
         /* TODO: logging protocol errors */
@@ -386,7 +412,7 @@ static void *ctcs_ctrl_session_thr_func (void *args)
     }
     EXCEPTION_END;
 
-    pthread_exit((void *)&result);
+    pthread_exit ((void *)&result);
 }
 
 
@@ -851,7 +877,6 @@ static int ctcs_job_session_init (CTCS_JOB_SESSION *job_session,
 
     assert (job_session != NULL);
 
-
     if (link != NULL)
     {
         job_session->link = link;
@@ -905,6 +930,7 @@ static int ctcs_job_session_init (CTCS_JOB_SESSION *job_session,
     }
     CTC_EXCEPTION (err_null_link_label)
     {
+        /* ERROR: critical error but ignore */
     }
     EXCEPTION_END;
 

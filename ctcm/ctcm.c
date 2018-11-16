@@ -54,7 +54,9 @@ static int ctc_start_listen (unsigned short ctc_port);
 
 static int ctc_make_link (CTCN_LINK **link);
 static int ctc_listen (CTCN_LINK *link, unsigned short ctc_port);
-static int ctc_accept_and_read_protocol (CTCN_LINK *link, void *header);
+static int ctc_accept_and_read_protocol (CTCN_LINK *link, 
+                                         CTCN_LINK **accept_link, 
+                                         void *header);
 
 static void ctc_stop_listen (void);
 static void ctc_finalize (void);
@@ -100,7 +102,7 @@ static void ctc_status (int signal)
     fprintf (stdout, "\nSTART_TIME: %s", start_time_string);
     fprintf (stdout, "\nSOURCE_DATABASE: %s", ctc_source_db_name);
     fprintf (stdout, "\nOPEN_CONNECTION_COUNT: %d", open_connection_cnt);
-    fprintf (stdout, "\nREGISTERED_JOB_COUNT: %s", registered_job_cnt);
+    fprintf (stdout, "\nREGISTERED_JOB_COUNT: %d", registered_job_cnt);
     fprintf (stdout, "\nCURRENT_PROCESSING_JOB_COUNT: %d", cur_processing_job_cnt);
     fprintf (stdout, "\nEXTRACTED_LOG_COUNT: %d\n", extracted_log_cnt);
     fflush (stdout);
@@ -125,7 +127,7 @@ int main (int argc, char **argv)
     is_stop_listen = CTC_FALSE;
     server_Status = CTC_SERV_STATUS_NOT_READY;
 
-    printf ("\n[ctc main function]\n database name : %s\n", argv[1]);
+//    printf ("\n[ctc main function]\n database name : %s\n", argv[1]);
 
     memset (ctc_source_db_name, 0, CTC_NAME_LEN);
     strncpy (ctc_source_db_name, argv[1], strlen (argv[1]));
@@ -191,14 +193,16 @@ int main (int argc, char **argv)
 
     strncpy (ctcl_conf_items.log_path, log_file_path, strlen(log_file_path));
 
-    /* TEST */
-    printf("ctcl_conf_items.log_path = %s\n", ctcl_conf_items.log_path);
+    fprintf (stdout, " Active log file path =\n\t %s\n", 
+             ctcl_conf_items.log_path);
+    fflush (stdout);
 
     /* log analyzer start */
     CTC_TEST_EXCEPTION (ctcl_initialize (&ctcl_conf_items, &la_thr_id), 
                         err_ctcl_init_failed_label);
 
-    printf ("log_analyzer_thr_id = %d\n", la_thr_id);
+    /* DEBUG */
+//    printf ("log_analyzer_thr_id = %d\n", la_thr_id);
 
     server_Status = CTC_SERV_STATUS_RUNNING;
     stage = 3;
@@ -325,7 +329,7 @@ static int ctc_load_conf (void)
 {
     CTC_TEST_EXCEPTION (ctcg_load_conf (), err_load_conf_label);
 
-    /* >>> for test */
+    /* >>> DEBUG */
     int i;
     for (i = 0; i < CTCG_CONF_ID_LAST; i++)
     {
@@ -343,7 +347,7 @@ static int ctc_load_conf (void)
         {
         }
     }
-    /* <<< for test */
+    /* <<< DEBUG */
 
     return CTC_SUCCESS;
 
@@ -374,6 +378,7 @@ static int ctc_start_listen (unsigned short ctc_port)
     CTCS_SESSION_GROUP *sg = NULL;
     CTCS_CTRL_SESSION *ctrl_session;
     CTCN_LINK *link = NULL;
+    CTCN_LINK *accept_link = NULL;
     CTCP_HEADER header;
 
     /* 1. setup listen socket */
@@ -386,7 +391,9 @@ static int ctc_start_listen (unsigned short ctc_port)
     while (!is_stop_listen)
     {
         /* accept --> read packet --> packet validation */
-        result = ctc_accept_and_read_protocol (link, (void *)&header);
+        result = ctc_accept_and_read_protocol (link, 
+                                               &accept_link,
+                                               (void *)&header);
 
         if (result == CTC_SUCCESS)
         {
@@ -394,12 +401,12 @@ static int ctc_start_listen (unsigned short ctc_port)
             {
                 case CTCP_CREATE_CONTROL_SESSION:
 
-                    (void)ctcp_do_create_ctrl_session (link, 
+                    (void)ctcp_do_create_ctrl_session (accept_link, 
                                                        &header, 
                                                        &sgid, 
                                                        &result_code);
 
-                    ctcp_send_create_ctrl_session_result (link, 
+                    ctcp_send_create_ctrl_session_result (accept_link, 
                                                           result_code, 
                                                           sgid);
 
@@ -414,7 +421,15 @@ static int ctc_start_listen (unsigned short ctc_port)
                     if (sg != NULL)
                     {
                         ctrl_session = ctcs_sg_get_ctrl_session (sg);
-                        pthread_join (ctrl_session->thread, NULL);
+
+                        if (ctrl_session->thread <= 0)
+                        {
+                            /* DEBUG */
+                            fprintf (stdout, 
+                                     "session group [%d] is just created. Thread id is %lu\n",
+                                     sgid, ctrl_session->thread);
+                            /* ERROR: critical but ignore */
+                        }
                     }
                     else
                     {
@@ -427,13 +442,13 @@ static int ctc_start_listen (unsigned short ctc_port)
 
                     sgid = ctcp_header_get_sgid (&header);
 
-                    (void)ctcp_do_create_job_session (link, 
+                    (void)ctcp_do_create_job_session (accept_link, 
                                                       sgid, 
                                                       &header, 
                                                       &job_desc,
                                                       &result_code);
 
-                    ctcp_send_create_job_session_result (link, 
+                    ctcp_send_create_job_session_result (accept_link, 
                                                          result_code, 
                                                          job_desc, 
                                                          sgid);
@@ -527,6 +542,7 @@ static int ctc_listen (CTCN_LINK *link, unsigned short ctc_port)
 
 
 static int ctc_accept_and_read_protocol (CTCN_LINK *listen_link,
+                                         CTCN_LINK **accept_link,
                                          void *header)
 {
     BOOL is_timeout = CTC_FALSE;
@@ -572,6 +588,8 @@ static int ctc_accept_and_read_protocol (CTCN_LINK *listen_link,
                                                               CTCP_UNKNOWN_OPERATION, 
                                                               (CTCP_HEADER *)header),
                                 err_analyze_protocol_header);
+
+            *accept_link = new_link;
 
             break;
         }

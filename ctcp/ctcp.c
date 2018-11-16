@@ -467,6 +467,7 @@ extern int ctcp_send_create_ctrl_session_result (void *inlink,
                                                  int result_code, 
                                                  int sgid)
 {
+    int result;
     unsigned short job_desc = CTCJ_NULL_JOB_DESCRIPTOR;
     CTCN_LINK *link = (CTCN_LINK *)inlink;
     /* link validation */
@@ -500,19 +501,20 @@ extern int ctcp_send_create_ctrl_session_result (void *inlink,
 
     CTC_EXCEPTION (err_null_link_label)
     {
-        /* ERROR: */
+        result = CTC_ERR_NULL_LINK_FAILED;
     }
     CTC_EXCEPTION (err_make_protocol_header_label)
     {
-        /* ERROR: */
+        /* maybe.. buffer managing problem occurred something like overflow */
+        result = CTC_ERR_BUFFER_OVERFLOW_FAILED;
     }
     CTC_EXCEPTION (err_link_send_label)
     {
-        /* ERROR: */
+        result = CTC_ERR_NETWORK_FAILED;
     }
     EXCEPTION_END;
 
-    return CTC_FAILURE;
+    return result;
 }
 
 
@@ -592,9 +594,12 @@ extern int ctcp_send_destroy_ctrl_session_result (void *inlink,
     }
     CTC_EXCEPTION (err_make_protocol_header_label)
     {
+        /* maybe.. buffer managing problem occurred something like overflow */
+        result = CTC_ERR_BUFFER_OVERFLOW_FAILED;
     }
     CTC_EXCEPTION (err_link_send_label)
     {
+        result = CTC_ERR_NETWORK_FAILED;
     }
     EXCEPTION_END;
 
@@ -654,6 +659,7 @@ extern int ctcp_send_create_job_session_result (void *inlink,
                                                 unsigned short job_desc,
                                                 int sgid)
 {
+    int result;
     CTCN_LINK *link = (CTCN_LINK *)inlink;
     /* link validation */
     CTC_COND_EXCEPTION (link == NULL, err_null_link_label);
@@ -691,19 +697,25 @@ extern int ctcp_send_create_job_session_result (void *inlink,
 
     CTC_EXCEPTION (err_null_link_label)
     {
+        result = CTC_ERR_NULL_LINK_FAILED;
     }
     CTC_EXCEPTION (err_job_desc)
     {
+        /* ERROR: critical problem, anyway failed */
+        result = CTC_FAILURE;
     }
     CTC_EXCEPTION (err_make_protocol_header_label)
     {
+        /* maybe.. buffer managing problem occurred something like overflow */
+        result = CTC_ERR_BUFFER_OVERFLOW_FAILED;
     }
     CTC_EXCEPTION (err_link_send_label)
     {
+        result = CTC_ERR_NETWORK_FAILED;
     }
     EXCEPTION_END;
 
-    return CTC_FAILURE;
+    return result;
 }
 
 
@@ -765,6 +777,7 @@ extern int ctcp_send_destroy_job_session_result (void *inlink,
                                                  unsigned short job_desc,
                                                  int sgid)
 {
+    int result;
     CTCN_LINK *link = (CTCN_LINK *)inlink;
     /* link validation */
     CTC_COND_EXCEPTION (link == NULL, err_null_link_label);
@@ -800,16 +813,21 @@ extern int ctcp_send_destroy_job_session_result (void *inlink,
 
     CTC_EXCEPTION (err_null_link_label)
     {
+        /* ERROR: critical error, anyway failed */
+        result = CTC_ERR_NULL_LINK_FAILED;
     }
     CTC_EXCEPTION (err_make_protocol_header_label)
     {
+        /* maybe.. buffer managing problem occurred something like overflow */
+        result = CTC_ERR_BUFFER_OVERFLOW_FAILED;
     }
     CTC_EXCEPTION (err_link_send_label)
     {
+        result = CTC_ERR_NETWORK_FAILED;
     }
     EXCEPTION_END;
 
-    return CTC_FAILURE;
+    return result;
 }
 
 /* job status */
@@ -879,6 +897,7 @@ extern int ctcp_send_request_job_status_result (void *inlink,
                                                 int sgid,
                                                 int status)
 {
+    int result;
     CTCN_LINK *link = (CTCN_LINK *)inlink;
     /* link validation */
     CTC_COND_EXCEPTION (link == NULL, err_null_link_label);
@@ -918,20 +937,27 @@ extern int ctcp_send_request_job_status_result (void *inlink,
 
     CTC_EXCEPTION (err_null_link_label)
     {
+        result = CTC_ERR_NULL_LINK_FAILED;
     }
     CTC_EXCEPTION (err_job_desc)
     {
+        /* ERROR: critical problem, anyway failed */
+        result = CTC_FAILURE;
     }
     CTC_EXCEPTION (err_make_protocol_header_label)
     {
+        /* maybe.. buffer managing problem occurred something like overflow */
+        result = CTC_ERR_BUFFER_OVERFLOW_FAILED;
     }
     CTC_EXCEPTION (err_link_send_label)
     {
+        result = CTC_ERR_NETWORK_FAILED;
     }
     EXCEPTION_END;
 
-    return CTC_FAILURE;
+    return result;
 }
+
 
 /* server status */
 extern int ctcp_do_request_server_status (void *inlink,
@@ -980,6 +1006,7 @@ extern int ctcp_send_request_server_status_result (void *inlink,
                                                    int sgid,
                                                    int status)
 {
+    int result;
     unsigned short job_desc = CTCJ_NULL_JOB_DESCRIPTOR;
 
     CTCN_LINK *link = (CTCN_LINK *)inlink;
@@ -1014,17 +1041,22 @@ extern int ctcp_send_request_server_status_result (void *inlink,
 
     CTC_EXCEPTION (err_null_link_label)
     {
+        result = CTC_ERR_NULL_LINK_FAILED;
     }
     CTC_EXCEPTION (err_make_protocol_header_label)
     {
+        /* maybe.. buffer managing problem occurred something like overflow */
+        result = CTC_ERR_BUFFER_OVERFLOW_FAILED;
     }
     CTC_EXCEPTION (err_link_send_label)
     {
+        result = CTC_ERR_NETWORK_FAILED;
     }
     EXCEPTION_END;
 
-    return CTC_FAILURE;
+    return result;
 }
+
 
 /* register table */
 extern int ctcp_do_register_table (void *inlink,
@@ -1117,6 +1149,7 @@ extern int ctcp_send_register_table_result (void *inlink,
                                             unsigned short job_desc,
                                             int sgid)
 {
+    int result;
     CTCN_LINK *link = (CTCN_LINK *)inlink;
     /* link validation */
     CTC_COND_EXCEPTION (link == NULL, err_null_link_label);
@@ -1157,23 +1190,25 @@ extern int ctcp_send_register_table_result (void *inlink,
 
     CTC_EXCEPTION (err_null_link_label)
     {
-        /* ERROR: */
+        result = CTC_ERR_NULL_LINK_FAILED;
     }
     CTC_EXCEPTION (err_job_desc)
     {
-        /* ERROR: */
+        /* ERROR: critical problem, anyway failed */
+        result = CTC_FAILURE;
     }
     CTC_EXCEPTION (err_make_protocol_header_label)
     {
-        /* ERROR: */
+        /* maybe.. buffer managing problem occurred something like overflow */
+        result = CTC_ERR_BUFFER_OVERFLOW_FAILED;
     }
     CTC_EXCEPTION (err_link_send_label)
     {
-        /* ERROR: */
+        result = CTC_ERR_NETWORK_FAILED;
     }
     EXCEPTION_END;
 
-    return CTC_FAILURE;
+    return result;
 }
 
 
@@ -1264,6 +1299,7 @@ extern int ctcp_send_unregister_table_result (void *inlink,
                                               unsigned short job_desc,
                                               int sgid)
 {
+    int result;
     CTCN_LINK *link = (CTCN_LINK *)inlink;
     /* link validation */
     CTC_COND_EXCEPTION (link == NULL, err_null_link_label);
@@ -1304,23 +1340,25 @@ extern int ctcp_send_unregister_table_result (void *inlink,
 
     CTC_EXCEPTION (err_null_link_label)
     {
-        /* ERROR: */
+        result = CTC_ERR_NULL_LINK_FAILED;
     }
     CTC_EXCEPTION (err_job_desc)
     {
-        /* ERROR: */
+        /* ERROR: critical problem, anyway failed */
+        result = CTC_FAILURE;
     }
     CTC_EXCEPTION (err_make_protocol_header_label)
     {
-        /* ERROR: */
+        /* maybe.. buffer managing problem occurred something like overflow */
+        result = CTC_ERR_BUFFER_OVERFLOW_FAILED;
     }
     CTC_EXCEPTION (err_link_send_label)
     {
-        /* ERROR: */
+        result = CTC_ERR_NETWORK_FAILED;
     }
     EXCEPTION_END;
 
-    return CTC_FAILURE;
+    return result;
 }
 
 
@@ -1393,6 +1431,7 @@ extern int ctcp_send_set_job_attribute_result (void *inlink,
                                                unsigned short job_desc,
                                                int sgid)
 {
+    int result;
     CTCN_LINK *link = (CTCN_LINK *)inlink;
     /* link validation */
     CTC_COND_EXCEPTION (link == NULL, err_null_link_label);
@@ -1433,23 +1472,25 @@ extern int ctcp_send_set_job_attribute_result (void *inlink,
 
     CTC_EXCEPTION (err_null_link_label)
     {
-        /* ERROR: */
+        result = CTC_ERR_NULL_LINK_FAILED;
     }
     CTC_EXCEPTION (err_job_desc)
     {
-        /* ERROR: */
+        /* ERROR: critical problem, anyway failed */
+        result = CTC_FAILURE;
     }
     CTC_EXCEPTION (err_make_protocol_header_label)
     {
-        /* ERROR: */
+        /* maybe.. buffer managing problem occurred something like overflow */
+        result = CTC_ERR_BUFFER_OVERFLOW_FAILED;
     }
     CTC_EXCEPTION (err_link_send_label)
     {
-        /* ERROR: */
+        result = CTC_ERR_NETWORK_FAILED;
     }
     EXCEPTION_END;
 
-    return CTC_FAILURE;
+    return result;
 }
 
 
@@ -1524,6 +1565,7 @@ extern int ctcp_send_start_capture_result (void *inlink,
                                            unsigned short job_desc,
                                            int sgid)
 {
+    int result;
     CTCN_LINK *link = (CTCN_LINK *)inlink;
     /* link validation */
     CTC_COND_EXCEPTION (link == NULL, err_null_link_label);
@@ -1562,23 +1604,25 @@ extern int ctcp_send_start_capture_result (void *inlink,
 
     CTC_EXCEPTION (err_null_link_label)
     {
-        /* ERROR: */
+        result = CTC_ERR_NULL_LINK_FAILED;
     }
     CTC_EXCEPTION (err_job_desc)
     {
-        /* ERROR: */
+        /* ERROR: critical problem, anyway failed */
+        result = CTC_FAILURE;
     }
     CTC_EXCEPTION (err_make_protocol_header_label)
     {
-        /* ERROR: */
+        /* maybe.. buffer managing problem occurred something like overflow */
+        result = CTC_ERR_BUFFER_OVERFLOW_FAILED;
     }
     CTC_EXCEPTION (err_link_send_label)
     {
-        /* ERROR: */
+        result = CTC_ERR_NETWORK_FAILED;
     }
     EXCEPTION_END;
 
-    return CTC_FAILURE;
+    return result;
 }
 
 
@@ -1631,6 +1675,7 @@ extern int ctcp_send_captured_data_result (void *inlink,
         start_offset = CTCP_HDR_LEN;
         remained_item_cnt = log_item_list->item_num;
         read_item_cnt = 0;
+        total_data_len = 0;
         tid = log_item_list->tid;
         log_item = log_item_list->head->next; 
 
@@ -2082,27 +2127,24 @@ extern int ctcp_send_captured_data_result (void *inlink,
 
     CTC_EXCEPTION (err_null_link_label)
     {
-        /* ERROR: */
+        result = CTC_ERR_NULL_LINK_FAILED;
     }
     CTC_EXCEPTION (err_make_protocol_header_label)
     {
-        /* ERROR: */
-    }
-    CTC_EXCEPTION (err_link_write_failed_label)
-    {
-        /* ERROR: */
+        /* maybe.. buffer managing problem occurred something like overflow */
+        result = CTC_ERR_BUFFER_OVERFLOW_FAILED;
     }
     CTC_EXCEPTION (err_write_buf_overflow_label)
     {
-        /* ERROR: */
+        result = CTC_ERR_BUFFER_OVERFLOW_FAILED;
     }
     CTC_EXCEPTION (err_link_send_label)
     {
-        /* ERROR: */
+        result = CTC_ERR_NETWORK_FAILED;
     }
     EXCEPTION_END;
 
-    return CTC_FAILURE;
+    return result;
 }
 
 
@@ -2172,6 +2214,7 @@ extern int ctcp_send_stop_capture_result (void *inlink,
                                           unsigned short job_desc,
                                           int sgid)
 {
+    int result;
     CTCN_LINK *link = (CTCN_LINK *)inlink;
     /* link validation */
     CTC_COND_EXCEPTION (link == NULL, err_null_link_label);
@@ -2211,19 +2254,25 @@ extern int ctcp_send_stop_capture_result (void *inlink,
 
     CTC_EXCEPTION (err_null_link_label)
     {
+        result = CTC_ERR_NULL_LINK_FAILED;
     }
     CTC_EXCEPTION (err_job_desc)
     {
+        /* ERROR: critical problem, anyway failed */
+        result = CTC_FAILURE;
     }
     CTC_EXCEPTION (err_make_protocol_header_label)
     {
+        /* maybe.. buffer managing problem occurred something like overflow */
+        result = CTC_ERR_BUFFER_OVERFLOW_FAILED;
     }
     CTC_EXCEPTION (err_link_send_label)
     {
+        result = CTC_ERR_NETWORK_FAILED;
     }
     EXCEPTION_END;
 
-    return CTC_FAILURE;
+    return result;
 }
 
 
@@ -2257,15 +2306,20 @@ extern int ctcp_process_protocol (void *inlink, int sgid)
 
     CTC_EXCEPTION (err_link_recv_socket_label)
     {
+        result = CTC_ERR_LINK_RECV_FAILED;
     }
     CTC_EXCEPTION (err_timeout_exceed_label)
     {
+        result = CTC_ERR_TIMEOUT_FAILED;
     }
     CTC_EXCEPTION (err_analyze_protocol_header)
     {
+        /* ERROR: critical problem, anyway failed */
+        result = CTC_ERR_INVALID_TYPE_FAILED;
     }
     CTC_EXCEPTION (err_execute_prcl_failed_label)
     {
+        /* error info set from sub-function */
     }
     EXCEPTION_END;
 
@@ -2650,39 +2704,51 @@ static int ctcp_execute_protocol (void *inlink, CTCP_HEADER *header)
 
     CTC_EXCEPTION (err_null_link_label)
     {
+        /* error info set from sub-function */
     }
     CTC_EXCEPTION (err_make_protocol_header_label)
     {
+        /* error info set from sub-function */
     }
     CTC_EXCEPTION (err_create_job_session_failed_label)
     {
+        /* error info set from sub-function */
     }
     CTC_EXCEPTION (err_destroy_job_session_failed_label)
     {
+        /* error info set from sub-function */
     }
     CTC_EXCEPTION (err_request_job_status_failed_label)
     {
+        /* error info set from sub-function */
     }
     CTC_EXCEPTION (err_request_server_status_failed_label)
     {
+        /* error info set from sub-function */
     }
     CTC_EXCEPTION (err_register_table_failed_label)
     {
+        /* error info set from sub-function */
     }
     CTC_EXCEPTION (err_unregister_table_failed_label)
     {
+        /* error info set from sub-function */
     }
     CTC_EXCEPTION (err_set_job_attribute_failed_label)
     {
+        /* error info set from sub-function */
     }
     CTC_EXCEPTION (err_start_capture_failed_label)
     {
+        /* error info set from sub-function */
     }
     CTC_EXCEPTION (err_stop_capture_failed_label)
     {
+        /* error info set from sub-function */
     }
     CTC_EXCEPTION (err_send_result_failed_label)
     {
+        /* error info set from sub-function */
     }
     EXCEPTION_END;
 

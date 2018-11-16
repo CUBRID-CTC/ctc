@@ -87,7 +87,8 @@ typedef enum ctc_err
     CTC_ERR_BAD_PAGE_FAILED,                    /* 10030 */ 
     CTC_ERR_READ_FROM_DISK_FAILED,              /* 10031 */
     CTC_ERR_LOG_NOT_EXIST_FAILED,               /* 10032 */
-    CTC_ERR_NOT_READY_FAILED                    /* 10033 */
+    CTC_ERR_NOT_READY_FAILED,                   /* 10033 */
+    CTC_ERR_NETWORK_FAILED                      /* 10034 */
 
 }CTC_ERR;
 
