@@ -1,1 +1,0 @@
-ctc log extractor
