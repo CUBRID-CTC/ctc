@@ -368,26 +368,6 @@ struct ctcl_act_log
     int db_logpagesize;
 };
 
-/*
-struct ctcl_item
-{
-    char *db_user;
-    char *table_name;
-    int log_type;
-    int stmt_type;
-    CTCL_LOG_LSA lsa;       
-    CTCL_LOG_LSA target_lsa;
-
-    DB_VALUE key;
-
-    CTCL_UPDATE_LOG_INFO update_log_info;
-    CTCL_INSERT_LOG_INFO insert_log_info;
-    CTCL_DELETE_LOG_INFO delete_log_info;
-
-    CTCL_ITEM *next;
-    CTCL_ITEM *prev;
-};
-*/
 
 struct ctcl_commit
 {
@@ -464,6 +444,7 @@ struct ctcl_mgr
     CTCL_ARGS thr_args;
     CTCL_INFO log_info;
     pthread_t analyzer_thr;  
+    pthread_t trans_remover_thr;  
 //    CTCL_THREAD analyzer_thr;   
 //    CTC_JOB_REF_TABLE *job_ref_tbl;   /* job reference table */
 };
@@ -512,6 +493,7 @@ CTCL_MGR ctcl_Mgr;
 
 
 /* static functions */
+static void *ctcl_trans_remover_thr_func (void);
 static void *ctcl_log_analyzer_thr_func (void *ctcl_args);
 static int ctcl_start_log_analyzer (CTCL_ARGS *ctcl_args);
 static void ctcl_stop_log_analyzer (void);
@@ -712,6 +694,7 @@ static int ctcl_apply_commit_list (CTCL_LOG_LSA *lsa,
                                    CTCL_LOG_PAGEID final_pageid);
 
 static void ctcl_free_log_items_by_tranid (int tid);
+static void ctcl_free_long_trans_log_list (CTCL_TRANS_LOG_LIST *list);
 
 static int ctcl_log_record_process (CTCL_LOG_RECORD_HEADER *lrec, 
                                     CTCL_LOG_LSA *final, 
@@ -5966,9 +5949,11 @@ static void ctcl_shutdown (void)
 
 static int ctcl_start_log_analyzer (CTCL_ARGS *ctcl_args)
 {
+    BOOL is_analyzer_started = CTC_FALSE;
     int result;
     int thr_ret = 0;
     pthread_t la_thr;
+    pthread_t tr_thr;
 
     result = pthread_create (&la_thr, 
                              NULL, 
@@ -5980,6 +5965,18 @@ static int ctcl_start_log_analyzer (CTCL_ARGS *ctcl_args)
     /* register thread id to manager */
     ctcl_Mgr.analyzer_thr = la_thr;
 
+    is_analyzer_started = CTC_TRUE;
+
+    result = pthread_create (&tr_thr, 
+                             NULL, 
+                             ctcl_trans_remover_thr_func, 
+                             NULL);
+
+    CTC_COND_EXCEPTION (result != CTC_SUCCESS, err_create_thread_failed_label); 
+
+    /* register thread id to manager */
+    ctcl_Mgr.trans_remover_thr = tr_thr;
+
     return CTC_SUCCESS;
 
     CTC_EXCEPTION (err_create_thread_failed_label)
@@ -5990,6 +5987,11 @@ static int ctcl_start_log_analyzer (CTCL_ARGS *ctcl_args)
         result = CTC_ERR_INSUFFICIENT_SYS_RESOURCE_FAILED;
     }
     EXCEPTION_END;
+
+    if (is_analyzer_started == CTC_TRUE)
+    {
+        ctcl_Mgr.need_stop_analyzer = CTC_TRUE;
+    }
 
     return result;
 }
@@ -6022,6 +6024,103 @@ static void ctcl_adjust_lsa (CTCL_ACT_LOG *act_log)
     CTCL_LSA_COPY (&ctcl_Mgr.log_info.required_lsa, 
                    (CTCL_LOG_LSA *)&(act_log->log_hdr->eof_lsa));
 }
+
+
+static void ctcl_free_long_trans_log_list (CTCL_TRANS_LOG_LIST *list)
+{
+    CTCL_ITEM *item = NULL;
+    CTCL_ITEM *next_item = NULL;
+
+    if (list != NULL)
+    {
+        if (list->long_trans_log_list != NULL)
+        {
+            if (list->long_trans_log_list->head != NULL)
+            {
+                item = list->long_trans_log_list->head->next;
+            }
+            else
+            {
+                /* no item */
+            }
+
+            for (; item; item = next_item)
+            {
+                next_item = item->next;
+
+                /* TODO: ctcl_long_trans_log_list_free_item */
+
+                item = NULL;
+            }
+        }
+        else
+        {
+            /* nothing to do */
+        }
+    }
+    else
+    {
+        /* nothing to do */
+    }
+}
+
+/*
+ * Description: clean committed transaction log lists which have 
+ *              no reference count
+ *
+ */
+static void *ctcl_trans_remover_thr_func (void)
+{
+    int i;
+    CTCL_TRANS_LOG_LIST *list = NULL;
+
+    while (ctcl_Mgr.need_stop_analyzer == CTC_FALSE)
+    {
+        for (i = 0; i < ctcl_Mgr.log_info.trans_cnt; i++)
+        {
+            list = ctcl_Mgr.log_info.trans_log_list[i];
+
+            if (list != NULL)
+            {
+                if (list->is_committed == CTC_TRUE &&
+                    list->ref_cnt == 0)
+                {
+                    ctcl_free_all_log_items (list);
+                    list->tid = CTCL_TRAN_NULL_ID;
+                    list->item_num = 0;
+                    list->is_committed = CTC_FALSE;
+                    CTCL_LSA_SET_NULL (&list->start_lsa);
+                    CTCL_LSA_SET_NULL (&list->last_lsa);
+
+                    if (list->long_tx_flag == CTC_TRUE &&
+                        list->long_trans_log_list != NULL)
+                    {
+                        ctcl_free_long_trans_log_list (list);
+                        list->long_tx_flag = CTC_FALSE;
+                    }
+                    else
+                    {
+                        /* no long transaction */
+                    }
+
+                }
+                else
+                {
+                    /* nothing to do */
+                }
+            }
+            else
+            {
+                continue;
+            }
+        }
+
+        usleep (100 * 1000);
+    }
+
+    pthread_exit (0);
+}
+
 
 /*
  * Description: modified from la_apply_log_file()

@@ -185,7 +185,7 @@ struct ctcl_long_trans_log_list
 {
     int fd;                 /* long_trans_file_descriptor */
     BOOL need_to_save;      /* true when max log count meet */
-    char* long_tran_log_path[CTCL_LOG_PATH_MAX];
+    char long_tran_log_path[CTCL_LOG_PATH_MAX];
 
     CTCL_ITEM* head;
     CTCL_ITEM* tail;
