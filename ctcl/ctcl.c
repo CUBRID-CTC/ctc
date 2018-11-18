@@ -733,7 +733,9 @@ static inline void ctcl_inc_trans_ref_cnt (CTCL_TRANS_LOG_LIST *trans_log_list);
 static inline void ctcl_dec_trans_ref_cnt (CTCL_TRANS_LOG_LIST *trans_log_list);
 
 
-extern int ctcl_initialize(CTCL_CONF_ITEMS *conf_items, pthread_t *la_thr_id)
+extern int ctcl_initialize (CTCL_CONF_ITEMS *conf_items, 
+                            pthread_t *la_thr_id, 
+                            pthread_t *tr_thr_id)
 {
     int result;
     int stage = 0;
@@ -776,12 +778,6 @@ extern int ctcl_initialize(CTCL_CONF_ITEMS *conf_items, pthread_t *la_thr_id)
     CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
                         err_find_log_pagesize_failed_label);
 
-    /* DEBUG */
-    printf ("act_log.log_hdr.eof_lsa.pageid = %d\n \
-            act_log.log_hdr.append_lsa.pageid = %d\n", 
-            ctcl_Mgr.log_info.act_log.log_hdr->eof_lsa.pageid, 
-            ctcl_Mgr.log_info.act_log.log_hdr->append_lsa.pageid);
-
     result = ctcl_init_cache_log_buffer (ctcl_Mgr.log_info.cache_pb, 
                                          ctcl_Mgr.log_info.cache_buffer_size, 
                                          SIZEOF_CTCL_CACHE_LOG_BUFFER(
@@ -789,7 +785,6 @@ extern int ctcl_initialize(CTCL_CONF_ITEMS *conf_items, pthread_t *la_thr_id)
 
     CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
                         err_init_cache_log_buffer_failed_label);
-
     
     sprintf (ctcl_Mgr.log_info.loginf_path, "%s%s%s%s", 
              ctcl_Mgr.log_info.log_path, 
@@ -826,6 +821,7 @@ extern int ctcl_initialize(CTCL_CONF_ITEMS *conf_items, pthread_t *la_thr_id)
     /* start log analyzer */
     result = ctcl_start_log_analyzer (&ctcl_Mgr.thr_args);
     *la_thr_id = ctcl_Mgr.analyzer_thr;
+    *tr_thr_id = ctcl_Mgr.trans_remover_thr;
 
     ctcl_Mgr.status = CTCL_MGR_STATUS_PROCESSING;
 
@@ -5967,15 +5963,21 @@ static int ctcl_start_log_analyzer (CTCL_ARGS *ctcl_args)
 
     is_analyzer_started = CTC_TRUE;
 
+    fprintf (stdout, "\n Log analyzer thread created.\n");
+    fflush (stdout);
+
     result = pthread_create (&tr_thr, 
                              NULL, 
-                             ctcl_trans_remover_thr_func, 
+                             (void *)ctcl_trans_remover_thr_func, 
                              NULL);
 
     CTC_COND_EXCEPTION (result != CTC_SUCCESS, err_create_thread_failed_label); 
 
     /* register thread id to manager */
     ctcl_Mgr.trans_remover_thr = tr_thr;
+
+    fprintf (stdout, " Log remover thread created.\n");
+    fflush (stdout);
 
     return CTC_SUCCESS;
 
@@ -5999,7 +6001,25 @@ static int ctcl_start_log_analyzer (CTCL_ARGS *ctcl_args)
 
 static void ctcl_stop_log_analyzer (void)
 {
-    ctcl_Mgr.need_stop_analyzer = true;
+    int retry = 10;
+
+    ctcl_Mgr.need_stop_analyzer = CTC_TRUE;
+
+    while (retry > 0)
+    {
+        if (ctcl_Mgr.cur_job_cnt > 0)
+        {
+            ctcl_Mgr.cur_job_cnt = 0;
+            retry--;
+        }
+        else
+        {
+            break;
+        }
+
+        /* wait for releasing ctcl resources */
+        sleep (1);
+    }
 }
 
 
@@ -6078,6 +6098,11 @@ static void *ctcl_trans_remover_thr_func (void)
     {
         for (i = 0; i < ctcl_Mgr.log_info.trans_cnt; i++)
         {
+            if (ctcl_Mgr.need_stop_analyzer == CTC_TRUE)
+            {
+                break;
+            }
+
             list = ctcl_Mgr.log_info.trans_log_list[i];
 
             if (list != NULL)
@@ -6117,6 +6142,9 @@ static void *ctcl_trans_remover_thr_func (void)
 
         usleep (100 * 1000);
     }
+
+    fprintf (stdout, " Exit from transaction log remover thread.\n");
+    fflush (stdout);
 
     pthread_exit (0);
 }
@@ -6170,24 +6198,73 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
                 ctcl_Mgr.log_info.final_lsa.pageid, 
                 ctcl_Mgr.log_info.act_log.log_hdr->append_lsa.pageid);
 
+        /* DEBUG */
+        int empty_fetch_cnt = 0;
+
         /* start loop for apply */
-        while (!CTCL_LSA_ISNULL (&ctcl_Mgr.log_info.final_lsa))
+        while (!CTCL_LSA_ISNULL (&ctcl_Mgr.log_info.final_lsa) &&
+               ctcl_Mgr.need_stop_analyzer != CTC_TRUE)
         {
+            CTC_TEST_EXCEPTION (ctcl_fetch_log_hdr (&ctcl_Mgr.log_info.act_log),
+                                err_fetch_log_header_failed_label);
+
+            if (CTCL_LSA_GE (&ctcl_Mgr.log_info.final_lsa, 
+                             (CTCL_LOG_LSA *)&ctcl_Mgr.log_info.act_log.log_hdr->append_lsa))
+            {
+                printf ("ctcl_Mgr.log_info.final_lsa.pageid = %d\n \
+                         act_log.log_hdr.append_lsa.pageid = %d\n", 
+                         ctcl_Mgr.log_info.final_lsa.pageid, 
+                         ctcl_Mgr.log_info.act_log.log_hdr->append_lsa.pageid);
+                empty_fetch_cnt++;
+                fprintf (stdout, " [A] empty fetch count = %d\n", empty_fetch_cnt);
+                fflush (stdout);
+
+                if (ctcl_Mgr.need_stop_analyzer != CTC_TRUE)
+                {
+                    sleep (30);
+                    continue;
+                }
+                else
+                {
+                    fprintf (stdout, "[A] Now shutdown ctcl\n");
+                    fflush (stdout);
+
+                    break;
+                }
+            }
+            else 
+            {
+                fprintf (stdout, " [B] empty fetch count = %d\n", empty_fetch_cnt);
+                fflush (stdout);
+
+                if (ctcl_check_page_exist (ctcl_Mgr.log_info.final_lsa.pageid) 
+                    != CTCL_PAGE_EXST_IN_ACTIVE_LOG)
+                {
+                    CTCL_LSA_COPY (&ctcl_Mgr.log_info.final_lsa, 
+                                   (CTCL_LOG_LSA *)&ctcl_Mgr.log_info.act_log.log_hdr->append_lsa);
+
+                    fprintf (stdout, " page exist in aRchive log.\n");
+                    fflush (stdout);
+                    continue;
+                }
+                else
+                {
+                    fprintf (stdout, "ctcl_Mgr.log_info.final_lsa.pageid = %d\n \ 
+                                      act_log.log_hdr.append_lsa.pageid = %d\n", 
+                                      ctcl_Mgr.log_info.final_lsa.pageid, 
+                                      ctcl_Mgr.log_info.act_log.log_hdr->append_lsa.pageid);
+
+                    fprintf (stdout, " page exist in aCtive log.\n");
+                    fflush (stdout);
+                }
+            }
+
             /* release all page buffers */
             ctcl_release_all_page_buffers (CTCL_PAGE_NULL_ID);
 
             /* we should fetch final log page from disk not cache buffer */
             ctcl_decache_page_buffer_range (ctcl_Mgr.log_info.final_lsa.pageid, 
                                             CTCL_LOGPAGEID_MAX);
-
-            CTC_TEST_EXCEPTION (ctcl_fetch_log_hdr (&ctcl_Mgr.log_info.act_log),
-                                err_fetch_log_header_failed_label);
-
-            if (ctcl_Mgr.log_info.final_lsa.pageid >=
-                ctcl_Mgr.log_info.act_log.log_hdr->eof_lsa.pageid)
-            {
-                continue;
-            }
 
             /* DEBUG */
             ctcl_Mgr.cur_job_cnt = 1;
@@ -6218,12 +6295,14 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
             if ((final_log_hdr.eof_lsa.pageid < ctcl_Mgr.log_info.final_lsa.pageid) &&
                 (final_log_hdr.eof_lsa.offset < ctcl_Mgr.log_info.final_lsa.offset))
             {
+                printf ("THIS_1");
                 usleep (100 * 1000);
                 continue;
             }
 
             /* get target page from log */
             log_buf = ctcl_get_page_buffer (ctcl_Mgr.log_info.final_lsa.pageid);
+
             CTCL_LSA_COPY (&old_lsa, &ctcl_Mgr.log_info.final_lsa);
 
             if (log_buf == NULL)
@@ -6394,9 +6473,10 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
                 */
 
                 /* DEBUG */
-                printf ("record type = %d\n record tid = %d\n", 
-                        lrec->type, lrec->trid);
+//                printf ("record type = %d\n record tid = %d\n", lrec->type, lrec->trid);
 
+                printf ("\nBEFORE PROCESS RECORD: ctcl_Mgr.log_info.final_lsa.pageid = %d\n",
+                        ctcl_Mgr.log_info.final_lsa.pageid);
                 /* process the log record */
                 result = ctcl_log_record_process (lrec, 
                                                   &ctcl_Mgr.log_info.final_lsa, 
@@ -6426,6 +6506,7 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
                              (CTCL_LOG_LSA *)&final_log_hdr.append_lsa) || 
                 ctcl_Mgr.log_info.is_end_of_record == CTC_TRUE)
             {
+                /* DEBUG */
                 printf ("HERE2\n");
                 /* it should be refetched and release */
                 ctcl_decache_page_buffer (log_buf);
@@ -6442,6 +6523,9 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
     while (ctcl_Mgr.need_stop_analyzer == CTC_FALSE);
 
     ctcl_shutdown ();
+
+    fprintf (stdout, "now shutdown ctcl\n");
+    fflush (stdout);
 
     result = CTC_SUCCESS;
 

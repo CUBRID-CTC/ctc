@@ -79,9 +79,14 @@ const char *proc_status_str[] = { "NOT_READY", "RUNNING", "CLOSING" };
 
 static void ctc_shutdown (int signal)
 {
+    fprintf (stdout, "\n Now stopping ctc server. Please wait some time to quit threads..\n");
+    fflush (stdout);
+
     server_Status = CTC_SERV_STATUS_CLOSING;
     ctc_stop_listen ();
     ctc_finalize ();
+
+    exit (0);
 }
 
 
@@ -121,13 +126,12 @@ int main (int argc, char **argv)
     char log_file_path[CTCG_PATH_MAX];
     time_t start_time; 
     pthread_t la_thr_id;
+    pthread_t tr_thr_id;
 
     CTCL_CONF_ITEMS ctcl_conf_items;
 
     is_stop_listen = CTC_FALSE;
     server_Status = CTC_SERV_STATUS_NOT_READY;
-
-//    printf ("\n[ctc main function]\n database name : %s\n", argv[1]);
 
     memset (ctc_source_db_name, 0, CTC_NAME_LEN);
     strncpy (ctc_source_db_name, argv[1], strlen (argv[1]));
@@ -139,7 +143,7 @@ int main (int argc, char **argv)
     (void)ctc_register_sig_handler (SIGUSR1, ctc_shutdown);
     (void)ctc_register_sig_handler (SIGUSR2, ctc_status);
 
-    /* for debugging */
+    /* DEBUG */
     (void)ctc_register_sig_handler (SIGINT, ctc_shutdown);
 
     CTC_TEST_EXCEPTION (ctc_load_conf (), err_load_conf_failed_label);
@@ -193,16 +197,13 @@ int main (int argc, char **argv)
 
     strncpy (ctcl_conf_items.log_path, log_file_path, strlen(log_file_path));
 
-    fprintf (stdout, " Active log file path =\n\t %s\n", 
-             ctcl_conf_items.log_path);
+    /* DEBUG */
+    fprintf (stdout, " Active log file path =\n\t %s\n", ctcl_conf_items.log_path);
     fflush (stdout);
 
     /* log analyzer start */
-    CTC_TEST_EXCEPTION (ctcl_initialize (&ctcl_conf_items, &la_thr_id), 
+    CTC_TEST_EXCEPTION (ctcl_initialize (&ctcl_conf_items, &la_thr_id, &tr_thr_id), 
                         err_ctcl_init_failed_label);
-
-    /* DEBUG */
-//    printf ("log_analyzer_thr_id = %d\n", la_thr_id);
 
     server_Status = CTC_SERV_STATUS_RUNNING;
     stage = 3;
@@ -230,6 +231,7 @@ int main (int argc, char **argv)
     CTC_TEST_EXCEPTION (ctc_start_listen (ctc_port), err_listen_failed_label);
 
     pthread_join (la_thr_id, (void **)&thr_ret);
+    pthread_join (tr_thr_id, (void **)&thr_ret);
 
     return CTC_SUCCESS;
 
@@ -388,7 +390,7 @@ static int ctc_start_listen (unsigned short ctc_port)
     CTC_TEST_EXCEPTION (ctc_listen (link, ctc_port), err_ctc_listen_label);
 
     /* 3. accept and read protocol */
-    while (!is_stop_listen)
+    while (is_stop_listen != CTC_TRUE)
     {
         /* accept --> read packet --> packet validation */
         result = ctc_accept_and_read_protocol (link, 
@@ -656,7 +658,7 @@ static void ctc_finalize (void)
 {
     (void)ctcj_finalize ();
     (void)ctcs_finalize ();
-//    (void)ctcl_finalize ();
+    (void)ctcl_finalize ();
 
     return;
 }

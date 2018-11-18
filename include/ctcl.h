@@ -213,7 +213,10 @@ struct ctcl_trans_log_list
 
 
 /* ctcl functions */
-extern int ctcl_initialize(CTCL_CONF_ITEMS *conf_items, pthread_t *la_thr_id);
+extern int ctcl_initialize (CTCL_CONF_ITEMS *conf_items, 
+                            pthread_t *la_thr_id,
+                            pthread_t *tr_thr_id);
+
 extern void ctcl_finalize(void);
 
 /* log manager functions */
