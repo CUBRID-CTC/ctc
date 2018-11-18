@@ -372,7 +372,7 @@ static int ctc_load_conf (void)
  */
 static int ctc_start_listen (unsigned short ctc_port)
 {
-    int result;
+    int result = CTC_SUCCESS;
     int result_code;
     int sgid = CTCP_SGID_NULL;
     int total_session_cnt = 0;
@@ -382,6 +382,9 @@ static int ctc_start_listen (unsigned short ctc_port)
     CTCN_LINK *link = NULL;
     CTCN_LINK *accept_link = NULL;
     CTCP_HEADER header;
+
+    /* DEBUG */
+    int test_cnt = 1;
 
     /* 1. setup listen socket */
     CTC_TEST_EXCEPTION (ctc_make_link (&link), err_make_link_failed_label);
@@ -399,14 +402,46 @@ static int ctc_start_listen (unsigned short ctc_port)
 
         if (result == CTC_SUCCESS)
         {
+            /* DEBUG
+            if (test_cnt == 1)
+            {
+                sleep (1);
+                header.op_id = CTCP_CREATE_CONTROL_SESSION;
+                test_cnt++;
+            }
+            else if (test_cnt == 2 || test_cnt == 3)
+            {
+                sleep (1);
+                header.op_id = CTCP_CREATE_JOB_SESSION;
+                test_cnt++;
+            }
+            else
+            {
+                header.op_id = CTCP_DESTROY_JOB_SESSION;
+            }
+            */
+
             switch (header.op_id)
             {
                 case CTCP_CREATE_CONTROL_SESSION:
+                    /* DEBUG 
+                    ctcn_link_create (&accept_link);
+                    header.op_param = (char)0;
+                    header.job_desc = CTCJ_NULL_JOB_DESCRIPTOR;
+                    header.session_group_id = CTCP_SGID_NULL;
+                    header.protocol_ver = CTCP_VERSION;
+                    header.data_len = 0;
+                    */
 
                     (void)ctcp_do_create_ctrl_session (accept_link, 
                                                        &header, 
                                                        &sgid, 
                                                        &result_code);
+
+                    /* DEBUG 
+                    fprintf (stdout, "sgid = %d, result_code = %d\n", sgid, result_code);
+                    break;
+                    */
 
                     ctcp_send_create_ctrl_session_result (accept_link, 
                                                           result_code, 
@@ -442,6 +477,15 @@ static int ctc_start_listen (unsigned short ctc_port)
 
                 case CTCP_CREATE_JOB_SESSION:
 
+                    /* DEBUG 
+                    ctcn_link_create (&accept_link);
+                    header.op_param = (char)0;
+                    header.job_desc = CTCJ_NULL_JOB_DESCRIPTOR;
+                    header.session_group_id = test_cnt - 1;
+                    header.protocol_ver = CTCP_VERSION;
+                    header.data_len = 0;
+                    */
+
                     sgid = ctcp_header_get_sgid (&header);
 
                     (void)ctcp_do_create_job_session (accept_link, 
@@ -449,6 +493,11 @@ static int ctc_start_listen (unsigned short ctc_port)
                                                       &header, 
                                                       &job_desc,
                                                       &result_code);
+
+                    /* DEBUG
+                    fprintf (stdout, "sgid = %d, result_code = %d\n", sgid, result_code);
+                    break;
+                    */
 
                     ctcp_send_create_job_session_result (accept_link, 
                                                          result_code, 

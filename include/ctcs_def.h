@@ -33,6 +33,7 @@
 #define CTC_JOB_SESSION_PER_GROUP                   (10)
 #define CTCS_JOB_SESSION_COUNT_MAX                  CTC_JOB_SESSION_PER_GROUP 
 #define CTCS_NULL_SESSION_ID                        (-1)
+#define CTCS_NULL_SESSION_GROUP_ID                  (-1)
 #define CTCS_JOB_THREAD_NULL_ID                     (-1)
 
 #define JOB_SESSION_POSITION_0_MASK                 (1)

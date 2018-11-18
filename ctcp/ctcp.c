@@ -626,6 +626,8 @@ extern int ctcp_do_create_job_session (void *inlink,
         /* add job session */
         result = ctcs_sg_add_job (sg, link, &job_id);
         CTC_COND_EXCEPTION (result != CTC_SUCCESS, err_add_job_label);
+
+        ctcs_mgr_inc_session_count ();
     
         *job_desc = job_id;
         *result_code = CTCP_RC_SUCCESS;

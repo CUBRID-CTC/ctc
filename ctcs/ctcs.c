@@ -146,6 +146,7 @@ extern void ctcs_finalize (void)
 
             if (sg != NULL)
             {
+                sg->ctrl_session.status = CTCS_CTRL_SESSION_CLOSING;
                 (void)ctcs_sg_finalize (sg);
             }
             else
@@ -204,6 +205,7 @@ extern int ctcs_mgr_create_session_group (CTCN_LINK *link, int *sgid)
     switch (stage)
     {
         case 2:
+            ctcs_mgr_dec_sg_cnt ();
             (void)ctcs_sg_finalize (sg);
         case 1:
             (void)free (sg);
@@ -225,7 +227,11 @@ extern int ctcs_mgr_destroy_session_group (CTCS_SESSION_GROUP *sg)
         CTC_COND_EXCEPTION (result != CTC_SUCCESS ||
                             result != CTC_ERR_JOB_NOT_EXIST_FAILED, 
                             err_job_session_final_label);
+
+        ctcs_mgr_dec_session_count ();
     }
+
+    ctcs_mgr_dec_session_count ();
 
     free (sg);
 
@@ -331,7 +337,7 @@ static int ctcs_init_ctrl_session (CTCS_CTRL_SESSION *ctrl_session,
 
     /* ctrl session thread create */
     CTC_TEST_EXCEPTION (pthread_create (&ctrl_thr, 
-                                        &ctrl_thr_attr, 
+                                        NULL, 
                                         (void *)ctcs_ctrl_session_thr_func, 
                                         (void *)ctrl_session),
                         err_create_thread_failed_label); 
@@ -371,6 +377,8 @@ static void *ctcs_ctrl_session_thr_func (void *args)
 
     while (ctrl_session->status != CTCS_CTRL_SESSION_CLOSING)
     {
+        /* DEBUG if (0) */
+//        if (0) { sleep (3);
         result = ctcn_link_poll_socket (ctrl_session->link, 
                                         100 * 1000, 
                                         &is_timeout);
@@ -391,6 +399,7 @@ static void *ctcs_ctrl_session_thr_func (void *args)
             CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
                                 err_process_prcl_failed_label);
         }
+//        } /* DEBUG if (0) */
     }
 
     pthread_exit (CTC_SUCCESS);
@@ -718,6 +727,8 @@ extern int ctcs_sg_delete_job (CTCS_SESSION_GROUP *sg, unsigned short job_desc)
     result = ctcs_job_session_final (job_session);
     CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
                         err_job_session_final_failed_label);
+
+    ctcs_mgr_dec_session_count ();
 
     return CTC_SUCCESS;
 
