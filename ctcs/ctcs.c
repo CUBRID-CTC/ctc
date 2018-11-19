@@ -288,13 +288,20 @@ extern int ctcs_sg_finalize (CTCS_SESSION_GROUP *sg)
     CTC_TEST_EXCEPTION (ctcs_mgr_delete_session_group (sg),
                         err_delete_session_group_label);    
 
-    ctcs_mgr_destroy_session_group (sg);
+    result = ctcs_mgr_destroy_session_group (sg);
+
+    CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
+                        err_destroy_sg_failed_label);
 
     return CTC_SUCCESS;
 
     CTC_EXCEPTION (err_delete_session_group_label)
     {
         result = CTC_ERR_DELETE_SESSION_GROUP_FAILED;
+    }
+    CTC_EXCEPTION (err_destroy_sg_failed_label)
+    {
+        result = CTC_FAILURE;
     }
     EXCEPTION_END;
 

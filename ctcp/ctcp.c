@@ -619,12 +619,25 @@ extern int ctcp_do_create_job_session (void *inlink,
     {
         /* add job session */
         result = ctcs_sg_add_job (sg, link, &job_id);
-        CTC_COND_EXCEPTION (result != CTC_SUCCESS, err_add_job_label);
 
-        ctcs_mgr_inc_session_count ();
-    
-        *job_desc = job_id;
-        *result_code = CTCP_RC_SUCCESS;
+        switch (result)
+        {
+            case CTC_SUCCESS:
+                ctcs_mgr_inc_session_count ();
+                *job_desc = job_id;
+                *result_code = CTCP_RC_SUCCESS;
+                break;
+
+            case CTC_ERR_EXCEED_MAX_FAILED: 
+                *result_code = CTCP_RC_FAILED_NO_MORE_JOB_ALLOWED;
+                break;
+
+            default:
+                *result_code = CTCP_RC_FAILED;
+                CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
+                                    err_add_job_label);
+                break;
+        }
     }
     else
     {
@@ -635,14 +648,11 @@ extern int ctcp_do_create_job_session (void *inlink,
 
     CTC_EXCEPTION (err_add_job_label)
     {
-        switch (result)
-        {
-            case CTC_ERR_EXCEED_MAX_FAILED: 
-                *result_code = CTCP_RC_FAILED_NO_MORE_JOB_ALLOWED;
-                break;
-            default:
-                *result_code = CTCP_RC_FAILED;
-        }
+        /* program error: error info set from sub-function */
+        /* DEBUG */
+        fprintf (stdout, 
+                 "err_add_job_label in ctcp_do_create_job_session ()\n");
+        fflush (stdout);
     }
     EXCEPTION_END;
 
@@ -732,11 +742,23 @@ extern int ctcp_do_destroy_job_session (void *inlink,
     if (sg != NULL)
     {
         result = ctcs_sg_delete_job (sg, job_desc);
-    
-        CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
-                            err_destroy_job_session_label);
 
-        *result_code = CTCP_RC_SUCCESS;
+        switch (result)
+        {
+            case CTC_SUCCESS:
+                *result_code = CTCP_RC_SUCCESS;
+                break;
+
+            case CTC_ERR_JOB_NOT_EXIST_FAILED:
+                *result_code = CTCP_RC_FAILED_INVALID_JOB;
+                break;
+
+            case CTC_ERR_STOP_CAPTURE_FAILED:
+            default:
+                *result_code = CTCP_RC_FAILED;
+                CTC_COND_EXCEPTION (CTC_TRUE, err_destroy_job_session_label);
+                break;
+        }
     }
     else
     {
@@ -751,16 +773,11 @@ extern int ctcp_do_destroy_job_session (void *inlink,
     }
     CTC_EXCEPTION (err_destroy_job_session_label)
     {
-        switch (result)
-        {
-            case CTC_ERR_JOB_NOT_EXIST_FAILED:
-                *result_code = CTCP_RC_FAILED_INVALID_JOB;
-                break;
-            case CTC_ERR_STOP_CAPTURE_FAILED:
-            default:
-                *result_code = CTCP_RC_FAILED;
-                break;
-        }
+        /* program error: error info set from sub-function */
+        /* DEBUG */
+        fprintf (stdout, 
+                 "err_destroy_job_session_label in ctcp_do_destroy_job_session () \n");
+        fflush (stdout);
     }
     EXCEPTION_END;
 
@@ -847,11 +864,27 @@ extern int ctcp_do_request_job_status (void *inlink,
     {
         result = ctcs_sg_get_job_status (sg, job_desc, &job_status);
 
-        CTC_COND_EXCEPTION (result != CTC_SUCCESS,
-                            err_get_job_status_failed_label);
+        switch (result)
+        {
+            case CTC_SUCCESS:
+                *status = job_status;
+                *result_code = CTCP_RC_SUCCESS;
+                break;
 
-        *status = job_status;
-        *result_code = CTCP_RC_SUCCESS;
+            case CTC_ERR_JOB_NOT_EXIST_FAILED:
+                *result_code = CTCP_RC_FAILED_INVALID_JOB;
+                break;
+
+            case CTC_ERR_INVALID_JOB_STATUS_FAILED:
+                *result_code = CTCP_RC_FAILED_INVALID_JOB_STATUS;
+                break;
+
+            default:
+                *result_code = CTCP_RC_FAILED;
+                CTC_COND_EXCEPTION (CTC_TRUE, 
+                                    err_get_job_status_failed_label);
+                break;
+        }
     }
     else
     {
@@ -866,20 +899,11 @@ extern int ctcp_do_request_job_status (void *inlink,
     }
     CTC_EXCEPTION (err_get_job_status_failed_label)
     {
-        switch (result)
-        {
-            case CTC_ERR_JOB_NOT_EXIST_FAILED:
-                *result_code = CTCP_RC_FAILED_INVALID_JOB;
-                break;
-
-            case CTC_ERR_INVALID_JOB_STATUS_FAILED:
-                *result_code = CTCP_RC_FAILED_INVALID_JOB_STATUS;
-                break;
-
-            default:
-                *result_code = CTCP_RC_FAILED;
-                break;
-        }
+        /* program error: error info set from sub-function */
+        /* DEBUG */
+        fprintf (stdout, 
+                 "err_get_job_status_failed_label in ctcp_do_request_job_status ()\n");
+        fflush (stdout);
     }
     EXCEPTION_END;
 
