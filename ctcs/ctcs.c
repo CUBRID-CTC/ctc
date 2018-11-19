@@ -224,11 +224,17 @@ extern int ctcs_mgr_destroy_session_group (CTCS_SESSION_GROUP *sg)
     for (i = 0; i < CTCS_JOB_SESSION_COUNT_MAX; i++)
     {
         result = ctcs_job_session_final (&(sg->job_session[i]));
-        CTC_COND_EXCEPTION (result != CTC_SUCCESS ||
-                            result != CTC_ERR_JOB_NOT_EXIST_FAILED, 
-                            err_job_session_final_label);
 
-        ctcs_mgr_dec_session_count ();
+        if (result == CTC_SUCCESS)
+        {
+            ctcs_mgr_dec_session_count ();
+        }
+        else
+        {
+            CTC_COND_EXCEPTION (result != CTC_ERR_JOB_ALREADY_STOPPED &&
+                                result != CTC_ERR_JOB_NOT_EXIST_FAILED, 
+                                err_job_session_final_label);
+        }
     }
 
     ctcs_mgr_dec_session_count ();
@@ -979,8 +985,7 @@ static int ctcs_job_session_final (CTCS_JOB_SESSION *job_session)
             result = ctcs_job_session_stop_capture (job_session, 
                                                     CTCS_CLOSE_IMMEDIATELY);
 
-            CTC_COND_EXCEPTION ((result != CTC_SUCCESS) && 
-                                (result != CTC_ERR_JOB_ALREADY_STOPPED), 
+            CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
                                 err_stop_capture_failed_label);
         }
         else

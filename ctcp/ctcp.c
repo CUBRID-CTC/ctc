@@ -437,16 +437,10 @@ extern int ctcp_do_create_ctrl_session (void *inlink,
 
     id = ctcp_header_get_sgid (header);
 
-    if (id == CTCP_SGID_NULL)
-    {
-        result = ctcs_mgr_create_session_group (link, &id);
-        CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
-                            err_create_session_grp_label);
-    }
-    else
-    {
-        /* invalid packet error but, ignore because.. */
-    }
+    result = ctcs_mgr_create_session_group (link, &id);
+
+    CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
+                        err_create_session_grp_label);
 
     *sgid = id;
     *result_code = CTCP_RC_SUCCESS;
@@ -1086,8 +1080,15 @@ extern int ctcp_do_register_table (void *inlink,
                                               user_name,
                                               &is_exist);
 
-        CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
-                            err_check_table_failed_label);
+        if (result == CTC_ERR_INVALID_JOB_FAILED)
+        {
+            *result_code = CTCP_RC_FAILED_INVALID_JOB;
+        }
+        else
+        {
+            CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
+                                err_check_table_failed_label);
+        }
 
         if (is_exist != CTC_TRUE)
         {
@@ -1096,10 +1097,28 @@ extern int ctcp_do_register_table (void *inlink,
                                              table_name, 
                                              user_name);
 
-            CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
-                                err_register_table_label);
+            switch (result)
+            {
+                /* CTCP_RC code setting by result */
+                case CTC_SUCCESS:
+                    *result_code = CTCP_RC_SUCCESS;
+                    break;
 
-            *result_code = CTCP_RC_SUCCESS;
+                case CTC_ERR_INVALID_USER_NAME_FAILED:
+                case CTC_ERR_INVALID_TABLE_NAME_FAILED:
+                    *result_code = CTCP_RC_FAILED_INVALID_TABLE_NAME;
+                    break;
+
+                case CTC_ERR_JOB_NOT_EXIST_FAILED:
+                    *result_code = CTCP_RC_FAILED_INVALID_JOB;
+                    break;
+
+                case CTC_ERR_ALLOC_FAILED:
+                default:
+                    *result_code = CTCP_RC_FAILED;
+                    CTC_COND_EXCEPTION (CTC_TRUE, err_register_table_label);
+                    break;
+            }
         }
         else
         {
@@ -1119,27 +1138,15 @@ extern int ctcp_do_register_table (void *inlink,
     }
     CTC_EXCEPTION (err_check_table_failed_label)
     {
-        *result_code = CTCP_RC_FAILED_INVALID_JOB;
+        /* program error: error info set from sub-function */
+        /* DEBUG */
+        fprintf (stdout, 
+                 "err_check_table_failed_label in ctcp_do_register_table ()\n");
+        fflush (stdout);
     }
     CTC_EXCEPTION (err_register_table_label)
     {
-        switch (result)
-        {
-            /* CTCP_RC code setting by result */
-            case CTC_ERR_INVALID_USER_NAME_FAILED:
-            case CTC_ERR_INVALID_TABLE_NAME_FAILED:
-                *result_code = CTCP_RC_FAILED_INVALID_TABLE_NAME;
-                break;
-            case CTC_ERR_ALLOC_FAILED:
-                *result_code = CTCP_RC_FAILED;
-                break;
-            case CTC_ERR_JOB_NOT_EXIST_FAILED:
-                *result_code = CTCP_RC_FAILED_INVALID_JOB;
-                break;
-            default:
-                *result_code = CTCP_RC_FAILED;
-                break;
-        }
+        /* error info set from sub-function */
     }
     EXCEPTION_END;
 
@@ -1240,20 +1247,45 @@ extern int ctcp_do_unregister_table (void *inlink,
                                               user_name,
                                               &is_exist);
 
-        CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
-                            err_check_table_failed_label);
+        if (result == CTC_ERR_INVALID_JOB_FAILED)
+        {
+            *result_code = CTCP_RC_FAILED_INVALID_JOB;
+        }
+        else
+        {
+            CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
+                                err_check_table_failed_label);
+        }
 
-        if (is_exist)
+        if (is_exist == CTC_TRUE)
         {
             result = ctcs_sg_unregister_table (sg, 
                                                job_desc, 
                                                table_name, 
                                                user_name);
 
-            CTC_COND_EXCEPTION (result != CTC_SUCCESS,
-                                err_unregister_table_failed_label); 
+            switch (result)
+            {
+                /* CTCP_RC code setting by result */
+                case CTC_SUCCESS:
+                    *result_code = CTCP_RC_SUCCESS;
+                    break;
 
-            *result_code = CTCP_RC_SUCCESS;
+                case CTC_ERR_INVALID_USER_NAME_FAILED:
+                case CTC_ERR_INVALID_TABLE_NAME_FAILED:
+                    *result_code = CTCP_RC_FAILED_INVALID_TABLE_NAME;
+                    break;
+
+                case CTC_ERR_JOB_NOT_EXIST_FAILED:
+                    *result_code = CTCP_RC_FAILED_INVALID_JOB;
+                    break;
+
+                default:
+                    *result_code = CTCP_RC_FAILED;
+                    CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
+                                        err_unregister_table_failed_label); 
+                    break;
+            }
         }
         else
         {
@@ -1273,23 +1305,14 @@ extern int ctcp_do_unregister_table (void *inlink,
     }
     CTC_EXCEPTION (err_check_table_failed_label)
     {
-        result = CTC_ERR_INVALID_TABLE_NAME_FAILED;
+        /* DEBUG */
+        fprintf (stdout, 
+                 "err_check_table_failed_label in ctcp_do_unregister_table ()\n");
+        fflush (stdout);
     }
     CTC_EXCEPTION (err_unregister_table_failed_label)
     {
-        switch (result)
-        {
-            /* CTCP_RC code setting by result */
-            case CTC_ERR_INVALID_TABLE_NAME_FAILED:
-                *result_code = CTCP_RC_FAILED_INVALID_TABLE_NAME;
-                break;
-            case CTC_ERR_JOB_NOT_EXIST_FAILED:
-                *result_code = CTCP_RC_FAILED_INVALID_JOB;
-                break;
-            default:
-                *result_code = CTCP_RC_FAILED;
-                break;
-        }
+        /* error info set from sub-function */
     }
     EXCEPTION_END;
 
@@ -1388,10 +1411,31 @@ extern int ctcp_do_set_job_attribute (void *inlink,
     {
         result = ctcs_sg_set_job_attr (sg, job_desc, (CTCJ_JOB_ATTR *)job_attr);
 
-        CTC_TEST_EXCEPTION (result != CTC_SUCCESS, 
-                            err_set_job_attr_label); 
+        switch (result)
+        {
+            /* CTCP_RC code setting by result */
+            case CTC_SUCCESS:
+                *result_code = CTCP_RC_SUCCESS;
+                break;
 
-        *result_code = CTCP_RC_SUCCESS;
+            case CTC_ERR_INVALID_ATTR_FAILED:
+                *result_code = CTCP_RC_FAILED_JOB_ATTR_NOT_EXIST;
+                break;
+
+            case CTC_ERR_INVALID_VALUE_FAILED:
+                *result_code = CTCP_RC_FAILED_INVALID_JOB_ATTR_VALUE;
+                break;
+
+            case CTC_ERR_JOB_NOT_EXIST_FAILED:
+                *result_code = CTCP_RC_FAILED_INVALID_JOB;
+                break;
+
+            default:
+                *result_code = CTCP_RC_FAILED;
+                CTC_TEST_EXCEPTION (result != CTC_SUCCESS, 
+                                    err_set_job_attr_label); 
+                break;
+        }
     }
     else
     {
@@ -1406,22 +1450,10 @@ extern int ctcp_do_set_job_attribute (void *inlink,
     }
     CTC_EXCEPTION (err_set_job_attr_label)
     {
-        switch (result)
-        {
-            /* CTCP_RC code setting by result */
-            case CTC_ERR_INVALID_ATTR_FAILED:
-                *result_code = CTCP_RC_FAILED_JOB_ATTR_NOT_EXIST;
-                break;
-            case CTC_ERR_INVALID_VALUE_FAILED:
-                *result_code = CTCP_RC_FAILED_INVALID_JOB_ATTR_VALUE;
-                break;
-            case CTC_ERR_JOB_NOT_EXIST_FAILED:
-                *result_code = CTCP_RC_FAILED_INVALID_JOB;
-                break;
-            default:
-                *result_code = CTCP_RC_FAILED;
-                break;
-        }
+        /* DEBUG */
+        fprintf (stdout, 
+                 "err_set_job_attr_label in ctcp_do_set_job_attribute ()\n");
+        fflush (stdout);
     }
     EXCEPTION_END;
 
@@ -1516,10 +1548,40 @@ extern int ctcp_do_start_capture (void *inlink,
     if (sg != NULL)
     {
         result = ctcs_sg_start_capture (sg, job_desc);
-        CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
-                            err_start_capture_failed_label);
 
-        *result_code = CTCP_RC_SUCCESS;
+        switch (result)
+        {
+            /* CTCP_RC code setting by result */
+            case CTC_SUCCESS:
+                *result_code = CTCP_RC_SUCCESS;
+                break;
+
+            case CTC_ERR_INVALID_TABLE_NAME_FAILED:
+                *result_code = CTCP_RC_FAILED_INVALID_TABLE_NAME;
+                break;
+
+            case CTC_ERR_JOB_NOT_EXIST_FAILED:
+                *result_code = CTCP_RC_FAILED_INVALID_JOB;
+                break;
+
+            case CTC_ERR_JOB_ALREADY_STARTED:
+                *result_code = CTCP_RC_FAILED_JOB_ALREADY_STARTED;
+                break;
+
+            case CTC_ERR_INVALID_JOB_STATUS_FAILED:
+                *result_code = CTCP_RC_FAILED_INVALID_JOB_STATUS;
+                break;
+
+            case CTC_ERR_ALLOC_FAILED:
+                *result_code = CTCP_RC_FAILED_INSUFFICIENT_SERVER_RESOURCE;
+                break;
+
+            default:
+                *result_code = CTCP_RC_FAILED;
+                CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
+                                    err_start_capture_failed_label);
+                break;
+        }
     }
     else
     {
@@ -1534,28 +1596,10 @@ extern int ctcp_do_start_capture (void *inlink,
     }
     CTC_EXCEPTION (err_start_capture_failed_label)
     {
-        switch (result)
-        {
-            /* CTCP_RC code setting by result */
-            case CTC_ERR_INVALID_TABLE_NAME_FAILED:
-                *result_code = CTCP_RC_FAILED_INVALID_TABLE_NAME;
-                break;
-            case CTC_ERR_ALLOC_FAILED:
-                *result_code = CTCP_RC_FAILED_INSUFFICIENT_SERVER_RESOURCE;
-                break;
-            case CTC_ERR_JOB_NOT_EXIST_FAILED:
-                *result_code = CTCP_RC_FAILED_INVALID_JOB;
-                break;
-            case CTC_ERR_JOB_ALREADY_STARTED:
-                *result_code = CTCP_RC_FAILED_JOB_ALREADY_STARTED;
-                break;
-            case CTC_ERR_INVALID_JOB_STATUS_FAILED:
-                *result_code = CTCP_RC_FAILED_INVALID_JOB_STATUS;
-                break;
-            default:
-                *result_code = CTCP_RC_FAILED;
-                break;
-        }
+        /* DEBUG */
+        fprintf (stdout, 
+                 "err_start_capture_failed_label in ctcp_do_start_capture ()\n");
+        fflush (stdout);
     }
     EXCEPTION_END;
 
@@ -1582,6 +1626,9 @@ extern int ctcp_send_start_capture_result (void *inlink,
                                 err_job_desc);
             break;
 
+        case CTCP_RC_FAILED_INVALID_JOB_STATUS:
+        case CTCP_RC_FAILED_JOB_ALREADY_STARTED:
+        case CTCP_RC_FAILED_INVALID_TABLE_NAME:
         case CTCP_RC_FAILED_INVALID_HANDLE:
         case CTCP_RC_FAILED_INVALID_JOB:
             break;
@@ -2194,10 +2241,27 @@ extern int ctcp_do_stop_capture (void *inlink,
     {
         result = ctcs_sg_stop_capture (sg, job_desc, close_cond);
 
-        CTC_COND_EXCEPTION (result != CTC_SUCCESS,
-                            err_stop_capture_failed_label);
+        switch (result)
+        {
+            /* CTCP_RC code setting by result */
+            case CTC_SUCCESS:
+                *result_code = CTCP_RC_SUCCESS;
+                break;
 
-        *result_code = CTCP_RC_SUCCESS;
+            case CTC_ERR_JOB_NOT_EXIST_FAILED:
+                *result_code = CTCP_RC_FAILED_INVALID_JOB;
+                break;
+
+            case CTC_ERR_JOB_ALREADY_STOPPED:
+                *result_code = CTCP_RC_FAILED_JOB_ALREADY_STOPPED;
+                break;
+
+            default:
+                *result_code = CTCP_RC_FAILED;
+                CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
+                                    err_stop_capture_failed_label);
+                break;
+        }
     }
     else
     {
@@ -2213,21 +2277,10 @@ extern int ctcp_do_stop_capture (void *inlink,
     }
     CTC_EXCEPTION (err_stop_capture_failed_label)
     {
-        switch (result)
-        {
-            /* CTCP_RC code setting by result */
-            case CTC_ERR_JOB_NOT_EXIST_FAILED:
-                *result_code = CTCP_RC_FAILED_INVALID_JOB;
-                break;
-
-            case CTC_ERR_JOB_ALREADY_STOPPED:
-                *result_code = CTCP_RC_FAILED_JOB_ALREADY_STOPPED;
-                break;
-
-            default:
-                *result_code = CTCP_RC_FAILED;
-                break;
-        }
+        /* DEBUG */
+        fprintf (stdout, 
+                 "err_stop_capture_failed_label in ctcp_do_stop_capture ()\n");
+        fflush (stdout);
     }
     EXCEPTION_END;
 
@@ -2617,7 +2670,6 @@ static int ctcp_execute_protocol (void *inlink, CTCP_HEADER *header)
                             }
                             else
                             {
-                                /* table table name from rbuf of link */
                                 result = ctcp_do_unregister_table (link, 
                                                                    sgid, 
                                                                    header, 
