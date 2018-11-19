@@ -487,7 +487,7 @@ extern int ctcp_send_create_ctrl_session_result (void *inlink,
 
     /* make protocol header */
     CTC_TEST_EXCEPTION (ctcp_make_protocol_header (link,
-                                                   (char)CTCP_CREATE_JOB_SESSION_RESULT,
+                                                   (char)CTCP_CREATE_CONTROL_SESSION_RESULT,
                                                    (char)result_code,
                                                    job_desc,
                                                    sgid,
@@ -801,7 +801,7 @@ extern int ctcp_send_destroy_job_session_result (void *inlink,
 
     /* make protocol header */
     CTC_TEST_EXCEPTION (ctcp_make_protocol_header (link,
-                                                   (char)CTCP_CREATE_JOB_SESSION_RESULT,
+                                                   (char)CTCP_DESTROY_JOB_SESSION_RESULT,
                                                    (char)result_code,
                                                    job_desc,
                                                    sgid,
@@ -925,7 +925,7 @@ extern int ctcp_send_request_job_status_result (void *inlink,
 
     /* make protocol header */
     CTC_TEST_EXCEPTION (ctcp_make_protocol_header (link,
-                                                   (char)CTCP_CREATE_JOB_SESSION_RESULT,
+                                                   (char)CTCP_REQUEST_JOB_STATUS_RESULT,
                                                    (char)result_code,
                                                    job_desc,
                                                    sgid,
@@ -1029,7 +1029,7 @@ extern int ctcp_send_request_server_status_result (void *inlink,
 
     /* make protocol header */
     CTC_TEST_EXCEPTION (ctcp_make_protocol_header (link,
-                                                   (char)CTCP_CREATE_JOB_SESSION_RESULT,
+                                                   (char)CTCP_REQUEST_SERVER_STATUS_RESULT,
                                                    (char)result_code,
                                                    job_desc,
                                                    sgid,
@@ -1179,7 +1179,7 @@ extern int ctcp_send_register_table_result (void *inlink,
 
     /* make protocol header */
     CTC_TEST_EXCEPTION (ctcp_make_protocol_header (link,
-                                                   (char)CTCP_CREATE_JOB_SESSION_RESULT,
+                                                   (char)CTCP_REGISTER_TABLE_RESULT,
                                                    (char)result_code,
                                                    job_desc,
                                                    sgid,
@@ -1329,7 +1329,7 @@ extern int ctcp_send_unregister_table_result (void *inlink,
 
     /* make protocol header */
     CTC_TEST_EXCEPTION (ctcp_make_protocol_header (link,
-                                                   (char)CTCP_CREATE_JOB_SESSION_RESULT,
+                                                   (char)CTCP_UNREGISTER_TABLE_RESULT,
                                                    (char)result_code,
                                                    job_desc,
                                                    sgid,
@@ -1461,7 +1461,7 @@ extern int ctcp_send_set_job_attribute_result (void *inlink,
 
     /* make protocol header */
     CTC_TEST_EXCEPTION (ctcp_make_protocol_header (link,
-                                                   (char)CTCP_CREATE_JOB_SESSION_RESULT,
+                                                   (char)CTCP_SET_JOB_ATTRIBUTE_RESULT,
                                                    (char)result_code,
                                                    job_desc,
                                                    sgid,
@@ -1593,7 +1593,7 @@ extern int ctcp_send_start_capture_result (void *inlink,
 
     /* make protocol header */
     CTC_TEST_EXCEPTION (ctcp_make_protocol_header (link,
-                                                   (char)CTCP_CREATE_JOB_SESSION_RESULT,
+                                                   (char)CTCP_START_CAPTURE_RESULT,
                                                    (char)result_code,
                                                    job_desc,
                                                    sgid,
@@ -2266,7 +2266,7 @@ extern int ctcp_send_stop_capture_result (void *inlink,
 
     /* make protocol header */
     CTC_TEST_EXCEPTION (ctcp_make_protocol_header (link,
-                                                   (char)CTCP_CREATE_JOB_SESSION_RESULT,
+                                                   (char)CTCP_STOP_CAPTURE_RESULT,
                                                    (char)result_code,
                                                    job_desc,
                                                    sgid,
