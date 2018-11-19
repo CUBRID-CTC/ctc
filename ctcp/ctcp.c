@@ -1119,13 +1119,14 @@ extern int ctcp_do_register_table (void *inlink,
     }
     CTC_EXCEPTION (err_check_table_failed_label)
     {
-        result = CTCP_RC_FAILED_INVALID_JOB;
+        *result_code = CTCP_RC_FAILED_INVALID_JOB;
     }
     CTC_EXCEPTION (err_register_table_label)
     {
         switch (result)
         {
             /* CTCP_RC code setting by result */
+            case CTC_ERR_INVALID_USER_NAME_FAILED:
             case CTC_ERR_INVALID_TABLE_NAME_FAILED:
                 *result_code = CTCP_RC_FAILED_INVALID_TABLE_NAME;
                 break;

@@ -679,6 +679,7 @@ extern int ctcj_job_register_table (CTCJ_JOB_INFO *job,
                                     const char *user_name)
 {
     BOOL is_exist;
+    int stage = 0;
     int result;
     int table_name_len;
     int user_name_len;
@@ -701,6 +702,7 @@ extern int ctcj_job_register_table (CTCJ_JOB_INFO *job,
     /* make new table_info */
     table = (CTCJ_JOB_TAB_INFO *)malloc (sizeof (CTCJ_JOB_TAB_INFO));
     CTC_COND_EXCEPTION (table == NULL, err_alloc_failed_label);
+    stage = 1;
 
     memset (table, 0, sizeof (*table));
 
@@ -712,6 +714,7 @@ extern int ctcj_job_register_table (CTCJ_JOB_INFO *job,
         
     /* add table into list */
     CTCG_LIST_ADD_LAST (&(job->table_list), &(table->node));
+    stage = 2;
 
     /* add table to job reference table */
     result = ctcj_ref_table_add_table (table);
@@ -743,8 +746,18 @@ extern int ctcj_job_register_table (CTCJ_JOB_INFO *job,
     }
     EXCEPTION_END;
 
+    switch (stage)
+    {
+        case 2:
+            CTCG_LIST_REMOVE (&(table->node));
+        case 1:
+            free (table);
+            break;
+    }
+
     return result;
 }
+
 
 
 extern int ctcj_job_unregister_table (CTCJ_JOB_INFO *job, 
