@@ -169,8 +169,21 @@ extern int ctcp_analyze_protocol_header (void *inlink,
     CTC_TEST_EXCEPTION (ctcn_link_read_two_byte_number (link, &read_job_desc),
                         err_ctcn_link_read_job_desc_label);
 
-    CTC_TEST_EXCEPTION (ctcp_validate_job_desc (read_op_param),
-                        err_ctcp_invalid_job_desc_label);
+    if (read_opid == CTCP_DESTROY_JOB_SESSION ||
+        read_opid == CTCP_REQUEST_JOB_STATUS  ||
+        read_opid == CTCP_REGISTER_TABLE      ||
+        read_opid == CTCP_UNREGISTER_TABLE    ||
+        read_opid == CTCP_SET_JOB_ATTRIBUTE   ||
+        read_opid == CTCP_START_CAPTURE       ||
+        read_opid == CTCP_STOP_CAPTURE)
+    {
+        CTC_TEST_EXCEPTION (ctcp_validate_job_desc (read_op_param),
+                            err_ctcp_invalid_job_desc_label);
+    }
+    else
+    {
+        /* padding */
+    }
 
     read_header->job_desc = (unsigned short)read_job_desc;
 
@@ -178,15 +191,22 @@ extern int ctcp_analyze_protocol_header (void *inlink,
     CTC_TEST_EXCEPTION (ctcn_link_read_four_byte_number (link, &read_sgid),
                         err_ctcn_link_read_sgid_label);
 
-    read_header->session_group_id = read_sgid;
+    if (read_opid != CTCP_CREATE_CONTROL_SESSION)
+    {
+        read_header->session_group_id = read_sgid;
+    }
+    else
+    {
+        read_header->session_group_id = CTCS_NULL_SESSION_GROUP_ID;
+    }
 
     /* protocol version */
     CTC_TEST_EXCEPTION (ctcn_link_read_four_byte_number (link, &read_ver),
                         err_ctcn_link_read_prcl_ver_label);
-
+/* TEMPORARY DISABLED
     CTC_TEST_EXCEPTION (ctcp_validate_prcl_ver (read_ver),
                         err_ctcp_invalid_prcl_ver_label);
-
+*/
     read_header->protocol_ver = read_ver;
 
     /* length of data */

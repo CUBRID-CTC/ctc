@@ -159,21 +159,22 @@ extern int ctcn_sock_shutdown (CTC_SOCK *sock, int how)
 
 extern int ctcn_sock_set_block_mode (CTC_SOCK *sock, BOOL block_mode)
 {
-    int result;
+    int fl;
 
-    result = fcntl (sock->handle, 0, 0);
-    CTC_COND_EXCEPTION (result != CTC_SUCCESS, err_fcntl_label);
+
+    fl = fcntl (sock->handle, F_GETFL, 0);
 
     if (block_mode == CTC_TRUE)
     {
-        result &= ~CTCN_NONBLOCK;
+        fl &= ~O_NONBLOCK;
     }
     else
     {
-        result |= CTCN_NONBLOCK;
+//        fl |= CTCN_NONBLOCK;
+        fl |= O_NONBLOCK;
     }
 
-    CTC_TEST_EXCEPTION (fcntl (sock->handle, 1, result), err_fcntl_label);
+    CTC_TEST_EXCEPTION (fcntl (sock->handle, F_SETFL, fl), err_fcntl_label);
 
     sock->block_mode = block_mode;
 
@@ -300,6 +301,8 @@ extern int ctcn_sock_accept (CTC_SOCK *acpt_sock,
                              int *addr_len)
 {
     int result;
+
+    *addr_len = sizeof (ctc_sock_addr_t);
 
     acpt_sock->handle = accept (lstn_sock->handle, addr, (socklen_t *)addr_len);
 
@@ -436,7 +439,7 @@ extern int ctcn_sock_poll (CTC_SOCK *sock, int event, int timeout)
 
     (void)close (handle);
 
-    return CTC_SUCCESS;
+    return result;
 
     CTC_EXCEPTION (err_epoll_create_failed_label)
     {

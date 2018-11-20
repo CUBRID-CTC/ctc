@@ -646,7 +646,7 @@ static int ctc_accept_and_read_protocol (CTCN_LINK *listen_link,
         }
     }
 
-    return CTC_SUCCESS;
+    return result;
 
     CTC_EXCEPTION (err_link_create_label)
     {
