@@ -340,7 +340,7 @@ static int ctcp_validate_op_param (int opid, unsigned char op_param)
 
         default:
 
-            result = CTC_FAILURE;
+            result = CTC_SUCCESS;
             break;
     }
 

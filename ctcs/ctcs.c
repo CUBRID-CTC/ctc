@@ -1688,28 +1688,28 @@ extern int ctcs_mgr_get_sg_cnt (int *sg_cnt)
 /* inline functions */
 static inline int ctcs_mgr_get_sg_max_cnt (void)
 {
-        return ctcs_Mgr.sg_max_cnt;
+    return ctcs_Mgr.sg_max_cnt;
 }
 
 static inline void ctcs_mgr_inc_sg_cnt (void)
 {
-        ctcs_Mgr.sg_cnt++;
+    ctcs_Mgr.sg_cnt++;
 }
 
 static inline void ctcs_mgr_dec_sg_cnt (void)
 {
-        ctcs_Mgr.sg_cnt--;
+    ctcs_Mgr.sg_cnt--;
 }
 
 static inline void ctcs_job_session_set_status (CTCS_JOB_SESSION *job_session, 
-                                         int status)
+                                                int status)
 {
-        job_session->status = status;
+    job_session->status = status;
 }
 
 static inline int ctcs_job_session_get_status (CTCS_JOB_SESSION *job_session)
 {
-        return job_session->status;
+    return job_session->status;
 }
 
 

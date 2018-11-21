@@ -529,6 +529,10 @@ static int ctcn_sock_send (CTC_SOCK *sock,
             
         send_result = send (sock->handle, buf, buf_size, flag);
 
+        /* DEBUG */
+        fprintf (stdout, "send_result = %d\n", send_result);
+        fflush (stdout);
+
         CTC_COND_EXCEPTION (send_result == -1, err_sock_send_label);
     }
 
@@ -998,8 +1002,11 @@ extern int ctcn_link_read_two_byte_number (CTCN_LINK *link, void *dest)
     CTC_COND_EXCEPTION (link->rbuf_pos + 2 > link->read_data_size,
                         err_no_space_in_read_buf);
 
-    *(unsigned char *)dest = link->rbuf[link->rbuf_pos];
-    link->rbuf_pos++;
+    ctcn_assign_number_two ((unsigned char *)link->rbuf + link->rbuf_pos, 
+                            (unsigned char *)dest);
+
+//    *(unsigned char *)dest = link->rbuf[link->rbuf_pos];
+    link->rbuf_pos += 2;
 
     return CTC_SUCCESS;
 
