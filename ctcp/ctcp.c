@@ -219,35 +219,45 @@ extern int ctcp_analyze_protocol_header (void *inlink,
 
     CTC_EXCEPTION (err_ctcn_link_read_operation_label)
     {
+        result = CTC_ERR_INVALID_TYPE_FAILED;
     }
     CTC_EXCEPTION (err_ctcp_invalid_operation_label)
     {
+        result = CTC_ERR_INVALID_VALUE_FAILED;
     }
     CTC_EXCEPTION (err_ctcn_link_read_param_label)
     {
+        result = CTC_ERR_INVALID_TYPE_FAILED;
     }
     CTC_EXCEPTION (err_ctcp_invalid_param_label)
     {
+        result = CTC_ERR_INVALID_VALUE_FAILED;
     }
     CTC_EXCEPTION (err_ctcn_link_read_job_desc_label)
     {
+        result = CTC_ERR_INVALID_TYPE_FAILED;
     }
     CTC_EXCEPTION (err_ctcp_invalid_job_desc_label)
     {
+        result = CTC_ERR_INVALID_JOB_FAILED;
     }
     CTC_EXCEPTION (err_ctcn_link_read_sgid_label)
     {
+        result = CTC_ERR_INVALID_TYPE_FAILED;
     }
     CTC_EXCEPTION (err_ctcn_link_read_prcl_ver_label)
     {
+        result = CTC_ERR_INVALID_TYPE_FAILED;
     }
     CTC_EXCEPTION (err_ctcp_invalid_prcl_ver_label)
     {
         /* ERROR: there is a possibility that a wrong packet injected 
          * critical protocol error but, just ignore the packet */
+        result = CTC_ERR_INVALID_VALUE_FAILED;
     }
     CTC_EXCEPTION (err_ctcn_link_read_data_len_label)
     {
+        result = CTC_ERR_INVALID_TYPE_FAILED;
     }
     EXCEPTION_END;
 
@@ -598,7 +608,17 @@ extern int ctcp_send_destroy_ctrl_session_result (void *inlink,
                         err_make_protocol_header_label);
 
     /* send */
-    CTC_TEST_EXCEPTION (ctcn_link_send (link), err_link_send_label);
+    result = ctcn_link_send (link);
+
+    if (result != CTC_SUCCESS)
+    {
+        fprintf (stderr, "link send failed in ctcp_process_protocol ()\n");
+        fflush (stderr);
+    }
+    else
+    {
+        /* send success */
+    }
 
     return CTC_SUCCESS;
 
@@ -610,10 +630,6 @@ extern int ctcp_send_destroy_ctrl_session_result (void *inlink,
     {
         /* maybe.. buffer managing problem occurred something like overflow */
         result = CTC_ERR_BUFFER_OVERFLOW_FAILED;
-    }
-    CTC_EXCEPTION (err_link_send_label)
-    {
-        result = CTC_ERR_NETWORK_FAILED;
     }
     EXCEPTION_END;
 
@@ -717,7 +733,17 @@ extern int ctcp_send_create_job_session_result (void *inlink,
                         err_make_protocol_header_label);
 
     /* send */
-    CTC_TEST_EXCEPTION (ctcn_link_send (link), err_link_send_label);
+    result = ctcn_link_send (link);
+
+    if (result != CTC_SUCCESS)
+    {
+        fprintf (stderr, "link send failed in ctcp_send_create_job_session_result ()\n");
+        fflush (stderr);
+    }
+    else
+    {
+        /* send success */
+    }
 
     return CTC_SUCCESS;
 
@@ -734,10 +760,6 @@ extern int ctcp_send_create_job_session_result (void *inlink,
     {
         /* maybe.. buffer managing problem occurred something like overflow */
         result = CTC_ERR_BUFFER_OVERFLOW_FAILED;
-    }
-    CTC_EXCEPTION (err_link_send_label)
-    {
-        result = CTC_ERR_NETWORK_FAILED;
     }
     EXCEPTION_END;
 
@@ -840,7 +862,17 @@ extern int ctcp_send_destroy_job_session_result (void *inlink,
                         err_make_protocol_header_label);
 
     /* send */
-    CTC_TEST_EXCEPTION (ctcn_link_send (link), err_link_send_label);
+    result = ctcn_link_send (link);
+
+    if (result != CTC_SUCCESS)
+    {
+        fprintf (stderr, "link send failed in ctcp_send_destroy_job_session_result ()\n");
+        fflush (stderr);
+    }
+    else
+    {
+        /* send success */
+    }
 
     return CTC_SUCCESS;
 
@@ -853,10 +885,6 @@ extern int ctcp_send_destroy_job_session_result (void *inlink,
     {
         /* maybe.. buffer managing problem occurred something like overflow */
         result = CTC_ERR_BUFFER_OVERFLOW_FAILED;
-    }
-    CTC_EXCEPTION (err_link_send_label)
-    {
-        result = CTC_ERR_NETWORK_FAILED;
     }
     EXCEPTION_END;
 
@@ -971,7 +999,17 @@ extern int ctcp_send_request_job_status_result (void *inlink,
                         err_make_protocol_header_label);
 
     /* send */
-    CTC_TEST_EXCEPTION (ctcn_link_send (link), err_link_send_label);
+    result = ctcn_link_send (link);
+
+    if (result != CTC_SUCCESS)
+    {
+        fprintf (stderr, "link send failed in ctcp_send_request_job_status_result ()\n");
+        fflush (stderr);
+    }
+    else
+    {
+        /* send success */
+    }
 
     return CTC_SUCCESS;
 
@@ -988,10 +1026,6 @@ extern int ctcp_send_request_job_status_result (void *inlink,
     {
         /* maybe.. buffer managing problem occurred something like overflow */
         result = CTC_ERR_BUFFER_OVERFLOW_FAILED;
-    }
-    CTC_EXCEPTION (err_link_send_label)
-    {
-        result = CTC_ERR_NETWORK_FAILED;
     }
     EXCEPTION_END;
 
@@ -1075,7 +1109,17 @@ extern int ctcp_send_request_server_status_result (void *inlink,
                         err_make_protocol_header_label);
 
     /* send */
-    CTC_TEST_EXCEPTION (ctcn_link_send (link), err_link_send_label);
+    result = ctcn_link_send (link);
+
+    if (result != CTC_SUCCESS)
+    {
+        fprintf (stderr, "link send failed in ctcp_send_request_server_status_result ()\n");
+        fflush (stderr);
+    }
+    else
+    {
+        /* send success */
+    }
 
     return CTC_SUCCESS;
 
@@ -1087,10 +1131,6 @@ extern int ctcp_send_request_server_status_result (void *inlink,
     {
         /* maybe.. buffer managing problem occurred something like overflow */
         result = CTC_ERR_BUFFER_OVERFLOW_FAILED;
-    }
-    CTC_EXCEPTION (err_link_send_label)
-    {
-        result = CTC_ERR_NETWORK_FAILED;
     }
     EXCEPTION_END;
 
@@ -1238,7 +1278,17 @@ extern int ctcp_send_register_table_result (void *inlink,
                         err_make_protocol_header_label);
 
     /* send */
-    CTC_TEST_EXCEPTION (ctcn_link_send (link), err_link_send_label);
+    result = ctcn_link_send (link);
+
+    if (result != CTC_SUCCESS)
+    {
+        fprintf (stderr, "link send failed in ctcp_send_register_table_result ()\n");
+        fflush (stderr);
+    }
+    else
+    {
+        /* send success */
+    }
 
     return CTC_SUCCESS;
 
@@ -1255,10 +1305,6 @@ extern int ctcp_send_register_table_result (void *inlink,
     {
         /* maybe.. buffer managing problem occurred something like overflow */
         result = CTC_ERR_BUFFER_OVERFLOW_FAILED;
-    }
-    CTC_EXCEPTION (err_link_send_label)
-    {
-        result = CTC_ERR_NETWORK_FAILED;
     }
     EXCEPTION_END;
 
@@ -1404,7 +1450,17 @@ extern int ctcp_send_unregister_table_result (void *inlink,
                         err_make_protocol_header_label);
 
     /* send */
-    CTC_TEST_EXCEPTION (ctcn_link_send (link), err_link_send_label);
+    result = ctcn_link_send (link);
+
+    if (result != CTC_SUCCESS)
+    {
+        fprintf (stderr, "link send failed in ctcp_send_unregister_table_result ()\n");
+        fflush (stderr);
+    }
+    else
+    {
+        /* send success */
+    }
 
     return CTC_SUCCESS;
 
@@ -1421,10 +1477,6 @@ extern int ctcp_send_unregister_table_result (void *inlink,
     {
         /* maybe.. buffer managing problem occurred something like overflow */
         result = CTC_ERR_BUFFER_OVERFLOW_FAILED;
-    }
-    CTC_EXCEPTION (err_link_send_label)
-    {
-        result = CTC_ERR_NETWORK_FAILED;
     }
     EXCEPTION_END;
 
@@ -1545,7 +1597,17 @@ extern int ctcp_send_set_job_attribute_result (void *inlink,
                         err_make_protocol_header_label);
 
     /* send */
-    CTC_TEST_EXCEPTION (ctcn_link_send (link), err_link_send_label);
+    result = ctcn_link_send (link);
+
+    if (result != CTC_SUCCESS)
+    {
+        fprintf (stderr, "link send failed in ctcp_send_set_job_attribute_result ()\n");
+        fflush (stderr);
+    }
+    else
+    {
+        /* send success */
+    }
 
     return CTC_SUCCESS;
 
@@ -1562,10 +1624,6 @@ extern int ctcp_send_set_job_attribute_result (void *inlink,
     {
         /* maybe.. buffer managing problem occurred something like overflow */
         result = CTC_ERR_BUFFER_OVERFLOW_FAILED;
-    }
-    CTC_EXCEPTION (err_link_send_label)
-    {
-        result = CTC_ERR_NETWORK_FAILED;
     }
     EXCEPTION_END;
 
@@ -1692,7 +1750,17 @@ extern int ctcp_send_start_capture_result (void *inlink,
                         err_make_protocol_header_label);
 
     /* send */
-    CTC_TEST_EXCEPTION (ctcn_link_send (link), err_link_send_label);
+    result = ctcn_link_send (link);
+
+    if (result != CTC_SUCCESS)
+    {
+        fprintf (stderr, "link send failed in ctcp_send_start_capture_result ()\n");
+        fflush (stderr);
+    }
+    else
+    {
+        /* send success */
+    }
 
     return CTC_SUCCESS;
 
@@ -1709,10 +1777,6 @@ extern int ctcp_send_start_capture_result (void *inlink,
     {
         /* maybe.. buffer managing problem occurred something like overflow */
         result = CTC_ERR_BUFFER_OVERFLOW_FAILED;
-    }
-    CTC_EXCEPTION (err_link_send_label)
-    {
-        result = CTC_ERR_NETWORK_FAILED;
     }
     EXCEPTION_END;
 
@@ -2371,7 +2435,17 @@ extern int ctcp_send_stop_capture_result (void *inlink,
                         err_make_protocol_header_label);
 
     /* send */
-    CTC_TEST_EXCEPTION (ctcn_link_send (link), err_link_send_label);
+    result = ctcn_link_send (link);
+
+    if (result != CTC_SUCCESS)
+    {
+        fprintf (stderr, "link send failed in ctcp_send_stop_capture_result ()\n");
+        fflush (stderr);
+    }
+    else
+    {
+        /* send success */
+    }
 
     return CTC_SUCCESS;
 
@@ -2389,10 +2463,6 @@ extern int ctcp_send_stop_capture_result (void *inlink,
         /* maybe.. buffer managing problem occurred something like overflow */
         result = CTC_ERR_BUFFER_OVERFLOW_FAILED;
     }
-    CTC_EXCEPTION (err_link_send_label)
-    {
-        result = CTC_ERR_NETWORK_FAILED;
-    }
     EXCEPTION_END;
 
     return result;
@@ -2403,6 +2473,7 @@ extern int ctcp_process_protocol (void *inlink, int sgid)
 {
     BOOL is_timeout = CTC_FALSE;
     int result; 
+    int result_code = CTCP_RC_SUCCESS;
     CTCP_HEADER header;
     CTCN_LINK *link = (CTCN_LINK *)inlink;
 
@@ -2415,15 +2486,57 @@ extern int ctcp_process_protocol (void *inlink, int sgid)
     CTC_COND_EXCEPTION (is_timeout == CTC_TRUE, err_timeout_exceed_label);
 
     /* analyze protocol */
-    CTC_TEST_EXCEPTION (ctcp_analyze_protocol_header (link,
-                                                      CTCP_UNKNOWN_OPERATION,
-                                                      &header),
-                        err_analyze_protocol_header);
+    result = ctcp_analyze_protocol_header (link, 
+                                           CTCP_UNKNOWN_OPERATION, 
+                                           &header);
 
-    /* execute protocol */
-    result = ctcp_execute_protocol (link, &header);
-    CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
-                        err_execute_prcl_failed_label);
+    if (result != CTC_SUCCESS)
+    {
+        switch (result)
+        {
+            case CTC_ERR_INVALID_JOB_FAILED:
+                result_code = CTCP_RC_FAILED_INVALID_JOB;
+                break;
+
+            case CTC_ERR_INVALID_TYPE_FAILED:
+                result_code = CTCP_RC_FAILED_OUT_OF_RANGE;
+                break;
+
+            case CTC_ERR_INVALID_VALUE_FAILED:
+            default:
+                result_code = CTCP_RC_FAILED_WRONG_PACKET;
+                break;
+        }
+
+        /* make protocol header */
+        CTC_TEST_EXCEPTION (ctcp_make_protocol_header (link,
+                                                       (char)header.op_id,
+                                                       (char)result_code,
+                                                       header.job_desc,
+                                                       header.session_group_id,
+                                                       0),
+                            err_make_protocol_header_label);
+
+        /* send */
+        result = ctcn_link_send (link);
+
+        if (result != CTC_SUCCESS)
+        {
+            fprintf (stderr, "link send failed in ctcp_process_protocol ()\n");
+            fflush (stderr);
+        }
+        else
+        {
+            /* send success */
+        }
+    }
+    else
+    {
+        /* execute protocol */
+        result = ctcp_execute_protocol (link, &header);
+        CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
+                            err_execute_prcl_failed_label);
+    }
 
     return CTC_SUCCESS;
 
@@ -2435,10 +2548,12 @@ extern int ctcp_process_protocol (void *inlink, int sgid)
     {
         result = CTC_ERR_TIMEOUT_FAILED;
     }
-    CTC_EXCEPTION (err_analyze_protocol_header)
+    CTC_EXCEPTION (err_make_protocol_header_label)
     {
         /* ERROR: critical problem, anyway failed */
-        result = CTC_ERR_INVALID_TYPE_FAILED;
+        fprintf (stderr, "err_make_protocol_header_label in ctcp_process_protocol ()\n");
+        fflush (stderr);
+        result = CTC_FAILURE;
     }
     CTC_EXCEPTION (err_execute_prcl_failed_label)
     {
@@ -2604,6 +2719,10 @@ static int ctcp_execute_protocol (void *inlink, CTCP_HEADER *header)
                                              (void *)user_name, 
                                              user_len);
 
+                    /* DEBUG */
+                    fprintf (stdout, "user_name = %s\n", user_name);
+                    fflush (stdout);
+
                     if (result != CTC_SUCCESS)
                     {
                         result_code = CTCP_RC_FAILED_WRONG_PACKET;
@@ -2624,7 +2743,10 @@ static int ctcp_execute_protocol (void *inlink, CTCP_HEADER *header)
                             result = ctcn_link_read (link, 
                                                      (void *)table_name, 
                                                      table_len);
-                    
+                    /* DEBUG */
+                    fprintf (stdout, "table_name = %s\n", table_name);
+                    fflush (stdout);
+
                             if (result != CTC_SUCCESS)
                             {
                                 result_code = CTCP_RC_FAILED_WRONG_PACKET;
@@ -2642,6 +2764,10 @@ static int ctcp_execute_protocol (void *inlink, CTCP_HEADER *header)
                         
                                 CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
                                                     err_register_table_failed_label);
+                    /* DEBUG */
+                    fprintf (stdout, "register table SUCCESS\n");
+                    fflush (stdout);
+
                             }
                         }
                     }
