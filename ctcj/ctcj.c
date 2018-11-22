@@ -63,6 +63,12 @@ static void ctcj_job_is_registered_table (CTCJ_JOB_INFO *job,
 
 static int ctcj_compare_tid_func (const void *first, 
                                   const void *second);
+
+
+static CTCJ_JOB_TAB_INFO *ctcj_job_find_table (CTCJ_JOB_INFO *job, 
+                                               char *table_name, 
+                                               char *user_name);
+
 /* inline functions */
 /*
 static inline void ctcj_ref_table_inc_tab_ref_cnt(CTC_REF_TAB_INFO *tab);
@@ -643,7 +649,7 @@ static void ctcj_job_is_registered_table (CTCJ_JOB_INFO *job,
 
     assert (job != NULL);
 
-    if (CTCG_LIST_IS_EMPTY (&(job->table_list)) != CTC_FALSE)
+    if (CTCG_LIST_IS_EMPTY (&(job->table_list)) != CTC_TRUE)
     {
         CTCG_LIST_ITERATE (&(job->table_list), itr)
         {
@@ -722,6 +728,8 @@ extern int ctcj_job_register_table (CTCJ_JOB_INFO *job,
     CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
                         err_ref_table_add_table_failed_label);
 
+    job->status = CTCJ_JOB_READY;
+
     return CTC_SUCCESS;
 
     CTC_EXCEPTION (err_invalid_table_name_label)
@@ -783,6 +791,10 @@ extern int ctcj_job_unregister_table (CTCJ_JOB_INFO *job,
     ctcj_job_is_registered_table (job, table_name, user_name, &is_exist);
 
     CTC_COND_EXCEPTION (is_exist != CTC_TRUE, err_not_exist_label);
+
+    table = ctcj_job_find_table (job, table_name, user_name);
+
+    assert (table != NULL);
         
     /* remove table from list */
     CTCG_LIST_REMOVE (&(table->node));
@@ -1003,6 +1015,43 @@ extern void ctcj_stop_capture (pthread_t job_thr_id, CTCJ_JOB_INFO *job)
     }
 
     return;
+}
+
+
+
+static CTCJ_JOB_TAB_INFO *ctcj_job_find_table (CTCJ_JOB_INFO *job, 
+                                               char *table_name, 
+                                               char *user_name)
+{
+    CTCJ_JOB_TAB_INFO *table = NULL;
+    CTCG_LIST_NODE *itr;
+
+    if (CTCG_LIST_IS_EMPTY (&(job->table_list)) != CTC_TRUE)
+    {
+        CTCG_LIST_ITERATE (&(job->table_list), itr)
+        {
+            table = (CTCJ_JOB_TAB_INFO *)itr->obj;
+
+            if (table != NULL)
+            {
+                if (strcmp (table->name, table_name) == 0 && 
+                    strcmp (table->user, user_name) == 0)
+                {
+                    break;
+                }
+                else
+                {
+                    continue;
+                }
+            }
+            else
+            {
+                /* until end of list */
+            }
+        }
+    }
+
+    return table;
 }
 
 

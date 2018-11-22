@@ -795,11 +795,12 @@ extern int ctcn_link_recv (CTCN_LINK *link,
 
         offset += recv_size;
 
-        assert (remained_data_len >= recv_size);
+        /* check recv data size less than header length */
+        assert (remained_data_len <= recv_size);
 
         remained_data_len -= recv_size;
 
-        if (remained_data_len == 0)
+        if (remained_data_len <= 0)
         {
             if (read_header_flag == CTC_FALSE)
             {
@@ -896,7 +897,11 @@ extern int ctcn_link_recv_socket (CTCN_LINK *link,
 {
     int result = CTC_SUCCESS;
 
-    result = ctcn_sock_recv (&(link->sock), buf, buf_size, recv_size, 0);
+    result = ctcn_sock_recv (&(link->sock), 
+                             buf, 
+                             CTCN_LINK_BUF_SIZE, 
+                             recv_size, 
+                             0);
 
     switch (result)
     {

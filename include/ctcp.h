@@ -246,8 +246,8 @@ extern int ctcp_check_opid_range (int opid);
 extern int ctcp_validate_op_id (int opid, int cmp_opid);
 
 extern int ctcp_make_protocol_header (void *link, 
-                                      char opid, 
-                                      char result_code,
+                                      unsigned char opid, 
+                                      unsigned char result_code,
                                       unsigned short job_desc,
                                       int sgid,
                                       int data_len);

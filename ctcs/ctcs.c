@@ -1154,6 +1154,8 @@ static int ctcs_job_session_register_table (CTCS_JOB_SESSION *job_session,
     CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
                         err_job_register_table_label);
 
+    job_session->status = CTCS_JOB_SESSION_JOB_ADDED;
+
     return CTC_SUCCESS;
 
     CTC_EXCEPTION (err_invalid_table_name_label)
