@@ -626,8 +626,6 @@ static int ctc_accept_and_read_protocol (CTCN_LINK *listen_link,
                                                   &addr_len),
                                 err_sock_accept_label);
 
-            //ctcn_sock_accept (&new_link->sock, &listen_link->sock, NULL, NULL);
-
             /* recv packet */
             CTC_TEST_EXCEPTION (ctcn_link_recv (new_link, 100, &is_timeout),
                                 err_link_recv_socket_label);

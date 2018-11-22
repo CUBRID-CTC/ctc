@@ -30,7 +30,7 @@
 #include <sys/socket.h>
 #include "ctc_types.h"
 
-#define ENDIAN_IS_BIG_ENDIAN            (0)
+//#define ENDIAN_IS_BIG_ENDIAN            (0)
 
 #define CTCN_MAX_LISTEN                 (11 * 100)  /* session cnt per sg * 100 */
 #define CTCN_SOCK_INVALID_HANDLE        (-1)

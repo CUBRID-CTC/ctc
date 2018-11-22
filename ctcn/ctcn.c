@@ -34,6 +34,7 @@
 #include <sys/socket.h>
 #include <sys/epoll.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <netdb.h>
 #include <errno.h>
 
@@ -647,9 +648,9 @@ extern int ctcn_link_set_sock_opt (CTCN_LINK *link)
                                            (void *)&opt, 
                                            sizeof (opt)),
                         err_set_sock_opt_nodelay_label);
-
     /* SO_SNDBUF */
     opt = CTCN_LINK_BUF_SIZE * 2;
+
     CTC_TEST_EXCEPTION (ctcn_sock_set_opt (&(link->sock), 
                                            0, 
                                            SO_SNDBUF, 
@@ -710,7 +711,6 @@ extern int ctcn_link_listen (CTCN_LINK *link,
 
     CTC_TEST_EXCEPTION (ctcn_sock_listen (&link->sock, CTCN_MAX_LISTEN),
                         err_sock_listen_label);
-
 
     return CTC_SUCCESS;
 
@@ -807,6 +807,7 @@ extern int ctcn_link_recv (CTCN_LINK *link,
 
                 remained_data_len = length_of_data;
                 read_header_flag = CTC_TRUE;
+                break;
             }
             else
             {
@@ -1005,7 +1006,6 @@ extern int ctcn_link_read_two_byte_number (CTCN_LINK *link, void *dest)
     ctcn_assign_number_two ((unsigned char *)link->rbuf + link->rbuf_pos, 
                             (unsigned char *)dest);
 
-//    *(unsigned char *)dest = link->rbuf[link->rbuf_pos];
     link->rbuf_pos += 2;
 
     return CTC_SUCCESS;

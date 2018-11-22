@@ -203,10 +203,10 @@ extern int ctcp_analyze_protocol_header (void *inlink,
     /* protocol version */
     CTC_TEST_EXCEPTION (ctcn_link_read_four_byte_number (link, &read_ver),
                         err_ctcn_link_read_prcl_ver_label);
-/* TEMPORARY DISABLED
+// TEMPORARY DISABLED
     CTC_TEST_EXCEPTION (ctcp_validate_prcl_ver (read_ver),
                         err_ctcp_invalid_prcl_ver_label);
-*/
+
     read_header->protocol_ver = read_ver;
 
     /* length of data */
