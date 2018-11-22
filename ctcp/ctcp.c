@@ -177,7 +177,7 @@ extern int ctcp_analyze_protocol_header (void *inlink,
         read_opid == CTCP_START_CAPTURE       ||
         read_opid == CTCP_STOP_CAPTURE)
     {
-        CTC_TEST_EXCEPTION (ctcp_validate_job_desc (read_op_param),
+        CTC_TEST_EXCEPTION (ctcp_validate_job_desc (read_job_desc),
                             err_ctcp_invalid_job_desc_label);
     }
     else
