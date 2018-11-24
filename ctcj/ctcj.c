@@ -395,8 +395,7 @@ extern int ctcj_ref_table_add_table (CTCJ_JOB_TAB_INFO *tab_info)
 
         if (table != NULL)
         {
-            if (strcmp (table->name, tab_info->name) == 0 &&
-                strcmp (table->user, tab_info->user) == 0)
+            if (strcmp (table->name, tab_info->name) == 0)
             {
                 table->ref_cnt++;
             }
@@ -450,8 +449,7 @@ extern int ctcj_ref_table_remove_table (CTCJ_JOB_TAB_INFO *tab_info)
 
         if (table != NULL)
         {
-            if (strcmp (table->name, tab_info->name) == 0 &&
-                strcmp (table->user, tab_info->user) == 0)
+            if (strcmp (table->name, tab_info->name) == 0)
             {
                 if (table->ref_cnt > 1)
                 {
@@ -657,8 +655,7 @@ static void ctcj_job_is_registered_table (CTCJ_JOB_INFO *job,
 
             if (table != NULL)
             {
-                if (strcmp (table->name, table_name) == 0 && 
-                    strcmp (table->user, user_name) == 0)
+                if (strcmp (table->name, table_name) == 0)
                 {
                     is_exist = CTC_TRUE;
                 }
@@ -875,11 +872,10 @@ extern void *ctcj_capture_thr_func (void *args)
 
     job = job_session->job;
 
-    trans_list = ctcl_mgr_get_trans_log_list ();
-
     last_tid = ctcl_mgr_get_last_tid_nolock ();
     job->last_processed_tid = last_tid;
     job->start_tid = last_tid + 1;
+    job->status = CTCJ_JOB_PROCESSING;
 
     while (job->status == CTCJ_JOB_PROCESSING)
     {
@@ -888,6 +884,8 @@ extern void *ctcj_capture_thr_func (void *args)
 
         if (cur_trans_cnt > 0)
         {
+            trans_list = ctcl_mgr_get_trans_log_list ();
+
             trans_log_list = (CTCL_TRANS_LOG_LIST ***)malloc (cur_trans_cnt * 
                                                               sizeof (CTCL_TRANS_LOG_LIST *));
 
@@ -896,29 +894,40 @@ extern void *ctcj_capture_thr_func (void *args)
             {
                 list = trans_list[i];
 
-                if (list->is_committed == CTC_TRUE)
+                if (list != NULL)
                 {
-                    if (list->tid > job->last_processed_tid)
+                    if (list->is_committed == CTC_TRUE)
                     {
-                        trans_log_list[j++] = &trans_list[i];
-
-                        if (list->tid > biggest_tid)
+                        if (list->tid > job->last_processed_tid &&
+                            list->ref_cnt > 0)
                         {
-                            biggest_tid = list->tid;
+                            trans_log_list[j++] = &trans_list[i];
+
+                            if (list->tid > biggest_tid)
+                            {
+                                biggest_tid = list->tid;
+                            }
+                        }
+                        else
+                        {
+                            /* already processed transaction */
                         }
                     }
                     else
                     {
-                        /* already processed transaction */
+                        /* not yet committed transaction */
                     }
                 }
                 else
                 {
-                    /* not yet committed transaction */
+                    continue;
                 }
             }
 
             sorted_trans_cnt = j;
+
+            /* update tid infos and decrease ref_cnt of ctcl */
+            job->last_processed_tid = biggest_tid;
 
             if (sorted_trans_cnt > 1)
             {
@@ -927,20 +936,17 @@ extern void *ctcj_capture_thr_func (void *args)
                        sorted_trans_cnt, 
                        sizeof(CTCL_TRANS_LOG_LIST *), 
                        ctcj_compare_tid_func);
+
+                /* send transaction log list */
+                result = ctcp_send_captured_data_result (job_session->link,
+                                                         job_session->job->job_desc,
+                                                         job_session->sgid,
+                                                         sorted_trans_cnt,
+                                                         (void **)trans_log_list);
+
+                CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
+                                    err_send_capture_result_failed_label);
             }
-
-            /* send transaction log list */
-            result = ctcp_send_captured_data_result (job_session->link,
-                                                     job_session->job->job_desc,
-                                                     job_session->sgid,
-                                                     sorted_trans_cnt,
-                                                     (void **)trans_log_list);
-
-            CTC_COND_EXCEPTION (result != CTC_SUCCESS, 
-                                err_send_capture_result_failed_label);
-
-            /* update tid infos and decrease ref_cnt of ctcl */
-            job->last_processed_tid = biggest_tid;
 
             /* free trans_log_list */
             free (trans_log_list);
@@ -1034,8 +1040,7 @@ static CTCJ_JOB_TAB_INFO *ctcj_job_find_table (CTCJ_JOB_INFO *job,
 
             if (table != NULL)
             {
-                if (strcmp (table->name, table_name) == 0 && 
-                    strcmp (table->user, user_name) == 0)
+                if (strcmp (table->name, table_name) == 0)
                 {
                     break;
                 }

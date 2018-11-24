@@ -995,7 +995,7 @@ extern int ctcp_send_request_job_status_result (void *inlink,
                                                    (unsigned char)result_code,
                                                    job_desc,
                                                    sgid,
-                                                   0),
+                                                   status),
                         err_make_protocol_header_label);
 
     /* send */
@@ -1105,7 +1105,7 @@ extern int ctcp_send_request_server_status_result (void *inlink,
                                                    (unsigned char)result_code,
                                                    job_desc,
                                                    sgid,
-                                                   0),
+                                                   status),
                         err_make_protocol_header_label);
 
     /* send */
@@ -1806,6 +1806,7 @@ extern int ctcp_send_captured_data_result (void *inlink,
     int remained_item_cnt;
     int read_item_cnt;
     int num_of_item_wbuf_pos;
+    int last_processed_tid;
     char *payload; /* TODO:*/
     CTCL_ITEM *log_item = NULL;
     CTCL_ITEM *next_log_item = NULL;
@@ -1815,6 +1816,7 @@ extern int ctcp_send_captured_data_result (void *inlink,
 //    CTCL_TRANS_LOG_LIST ***trans_log_list = (CTCL_TRANS_LOG_LIST ***)trans_list;
     CTCL_TRANS_LOG_LIST *log_item_list;
     CTCS_SESSION_GROUP *sg = NULL;
+    CTCS_JOB_SESSION *job_session = NULL;
     CTCG_LIST_NODE *itr;
 
     /* link validation */
@@ -1822,6 +1824,9 @@ extern int ctcp_send_captured_data_result (void *inlink,
 
     sg = ctcs_find_session_group_by_id (sgid);
     CTC_COND_EXCEPTION (sg == NULL, err_invalid_sgid_label);
+
+    job_session = ctcs_sg_find_job_session(sg, job_desc);
+//    last_processed_tid = job_session->job->last_processed_tid;
 
     /* about process by result code:
      * in this case, acceptable result codes are only two
@@ -1833,138 +1838,121 @@ extern int ctcp_send_captured_data_result (void *inlink,
      */
     for (i = 0; i < trans_cnt; i++)
     {
-//        log_item_list = (CTCL_TRANS_LOG_LIST *)trans_log_list[i];
-        log_item_list = (CTCL_TRANS_LOG_LIST *)trans_list[i];
-        start_offset = CTCP_HDR_LEN;
-        remained_item_cnt = log_item_list->item_num;
-        read_item_cnt = 0;
-        total_data_len = 0;
+        log_item_list = (*(CTCL_TRANS_LOG_LIST **)trans_list[i]);    
         tid = log_item_list->tid;
-        log_item = log_item_list->head->next; 
 
-        while (remained_item_cnt > 0)
-        {
-            for (; read_item_cnt <= log_item_list->item_num;)
+//        if (tid > last_processed_tid)
+//        {
+            start_offset = CTCP_HDR_LEN;
+            remained_item_cnt = log_item_list->item_num;
+            read_item_cnt = 0;
+            total_data_len = 0;
+            next_log_item = log_item_list->head; 
+
+            write_data_len = 0;
+
+            while (remained_item_cnt > 0)
             {
-                read_item_cnt++;
-                set_col_cnt = 0;
-                write_data_len = 0;
-                next_log_item = log_item->next;
-
-                /* check table_name of log item is registered table */
-                (void)ctcs_sg_is_table_registered (sg, 
-                                                   job_desc, 
-                                                   log_item->table_name, 
-                                                   log_item->db_user, 
-                                                   &is_exist);
-
-                if (is_exist != CTC_TRUE)
+                for (read_item_cnt; 
+                     read_item_cnt < log_item_list->item_num; 
+                     read_item_cnt++)
                 {
-                    /* skip this log item */
-                    continue;
-                }
+                    set_col_cnt = 0;
+                    log_item = next_log_item;
+                    next_log_item = log_item->next;
 
-                /* 1. transaction id (4 BYTE) */
-                if (ctcn_link_write_four_byte_number (link, (void *)&tid) 
-                    != CTC_SUCCESS)
-                {
-                    is_ovf = CTC_TRUE;
-                    break;
-                }
-                else
-                {
-                    write_data_len += 4;
-                }
+                    if (log_item->stmt_type < CTCL_STMT_TYPE_INSERT || 
+                        log_item->stmt_type > CTCL_STMT_TYPE_DELETE)
+                    {
+                        remained_item_cnt--;
+                        continue;
+                    }
 
-                /* 2. the number of items (4 BYTE) write later, 
-                 *    only increase write_data_len by offset */
-                if (ctcn_link_forward_wbuf_pos (link, sizeof (int)) 
-                    != CTC_SUCCESS)
-                {
-                    is_ovf = CTC_TRUE;
-                    break;
-                }
-                else
-                {
-                    num_of_item_wbuf_pos = CTCN_HDR_LEN + write_data_len;
-                    write_data_len += sizeof (int);
-                }
+                    /* check table_name of log item is registered table */
+                    (void)ctcs_sg_is_table_registered (sg, 
+                                                       job_desc, 
+                                                       log_item->table_name, 
+                                                       log_item->db_user, 
+                                                       &is_exist);
 
-                /* 3. table_name length (4 BYTE) */
-                str_len = strlen (log_item->table_name);
+                    if (is_exist != CTC_TRUE)
+                    {
+                        /* skip this log item */
+                        continue;
+                    }
 
-                if (ctcn_link_write_four_byte_number (link, (void *)&str_len) 
-                    != CTC_SUCCESS)
-                {
-                    is_ovf = CTC_TRUE;
-                    break;
-                }
-                else
-                {
-                    write_data_len += 4;
-                }
+                    /* 1. transaction id (4 BYTE) */
+                    if (ctcn_link_write_four_byte_number (link, (void *)&tid) 
+                        != CTC_SUCCESS)
+                    {
+                        is_ovf = CTC_TRUE;
+                        break;
+                    }
+                    else
+                    {
+                        write_data_len += 4;
+                    }
 
-                /* 4. table_name value (VARIABLE_LENGTH) */
-                if (ctcn_link_write (link, log_item->table_name, str_len) 
-                    != CTC_SUCCESS)
-                {
-                    is_ovf = CTC_TRUE;
-                    break;
-                }
-                else
-                {
-                    write_data_len += str_len;
-                }
+                    /* 2. the number of items (4 BYTE) write later, 
+                     *    only increase write_data_len by offset */
+                    if (ctcn_link_forward_wbuf_pos (link, sizeof (int)) 
+                        != CTC_SUCCESS)
+                    {
+                        is_ovf = CTC_TRUE;
+                        break;
+                    }
+                    else
+                    {
+                        num_of_item_wbuf_pos = CTCN_HDR_LEN + write_data_len;
+                        write_data_len += sizeof (int);
+                    }
 
-                /* 5. stmt type (4 BYTE) */
-                if (ctcn_link_write_four_byte_number (link, (void *)&log_item->stmt_type) 
-                    != CTC_SUCCESS)
-                {
-                    is_ovf = CTC_TRUE;
-                    break;
-                }
-                else
-                {
-                    write_data_len += 4;
-                }
+                    /* 3. table_name length (4 BYTE) */
+                    str_len = strlen (log_item->table_name);
 
-                switch (log_item->stmt_type)
-                {
-                    case CTCL_STMT_TYPE_INSERT:
+                    if (ctcn_link_write_four_byte_number (link, (void *)&str_len) 
+                        != CTC_SUCCESS)
+                    {
+                        is_ovf = CTC_TRUE;
+                        break;
+                    }
+                    else
+                    {
+                        write_data_len += 4;
+                    }
 
-                        set_col_cnt = log_item->insert_log_info.set_col_cnt;
-                        
-                        /* 6. set column count (4 BYTE)*/
-                        if (ctcn_link_write_four_byte_number (link, (void *)&set_col_cnt)
-                            != CTC_SUCCESS)
-                        {
-                            is_ovf = CTC_TRUE;
-                            break;
-                        }
-                        else
-                        {
-                            write_data_len += 4;
-                        }
+                    /* 4. table_name value (VARIABLE_LENGTH) */
+                    if (ctcn_link_write (link, log_item->table_name, str_len) 
+                        != CTC_SUCCESS)
+                    {
+                        is_ovf = CTC_TRUE;
+                        break;
+                    }
+                    else
+                    {
+                        write_data_len += str_len;
+                    }
 
-                        /* 7. set column info */
-                        CTCG_LIST_ITERATE (&(log_item->insert_log_info.set_col_list), itr)
-                        {
-                            set_col = (CTCL_COLUMN *)itr->obj;
+                    /* 5. stmt type (4 BYTE) */
+                    if (ctcn_link_write_four_byte_number (link, (void *)&log_item->stmt_type) 
+                        != CTC_SUCCESS)
+                    {
+                        is_ovf = CTC_TRUE;
+                        break;
+                    }
+                    else
+                    {
+                        write_data_len += 4;
+                    }
 
-                            /* set column name length (4 BYTE) */
-                            if (ctcn_link_write_four_byte_number 
-                                (link, (void *)&set_col->name_len) != CTC_SUCCESS)
-                            {
-                                is_ovf = CTC_TRUE;
-                                break;
-                            }
-                            else
-                            {
-                                write_data_len += 4;
-                            }
+                    switch (log_item->stmt_type)
+                    {
+                        case CTCL_STMT_TYPE_INSERT:
 
-                            /* set column name (VARIABLE) */
-                            if (ctcn_link_write (link, set_col->name, set_col->name_len) 
+                            set_col_cnt = log_item->insert_log_info.set_col_cnt;
+
+                            /* 6. set column count (4 BYTE)*/
+                            if (ctcn_link_write_four_byte_number (link, (void *)&set_col_cnt)
                                 != CTC_SUCCESS)
                             {
                                 is_ovf = CTC_TRUE;
@@ -1972,12 +1960,84 @@ extern int ctcp_send_captured_data_result (void *inlink,
                             }
                             else
                             {
-                                write_data_len += set_col->name_len;
+                                write_data_len += 4;
                             }
 
-                            /* set column type (4 BYTE) */
+                            /* 7. set column info */
+                            CTCG_LIST_ITERATE (&(log_item->insert_log_info.set_col_list), itr)
+                            {
+                                set_col = (CTCL_COLUMN *)itr->obj;
+
+                                /* set column name length (4 BYTE) */
+                                if (ctcn_link_write_four_byte_number 
+                                    (link, (void *)&set_col->name_len) != CTC_SUCCESS)
+                                {
+                                    is_ovf = CTC_TRUE;
+                                    break;
+                                }
+                                else
+                                {
+                                    write_data_len += 4;
+                                }
+
+                                /* set column name (VARIABLE) */
+                                if (ctcn_link_write (link, set_col->name, set_col->name_len) 
+                                    != CTC_SUCCESS)
+                                {
+                                    is_ovf = CTC_TRUE;
+                                    break;
+                                }
+                                else
+                                {
+                                    write_data_len += set_col->name_len;
+                                }
+
+                                /* set column type (4 BYTE) */
+                                if (ctcn_link_write_four_byte_number 
+                                    (link, (void *)&set_col->type) != CTC_SUCCESS)
+                                {
+                                    is_ovf = CTC_TRUE;
+                                    break;
+                                }
+                                else
+                                {
+                                    write_data_len += 4;
+                                }
+
+                                /* set column value length (4 BYTE) */
+                                if (ctcn_link_write_four_byte_number 
+                                    (link, (void *)&set_col->val_len) != CTC_SUCCESS)
+                                {
+                                    is_ovf = CTC_TRUE;
+                                    break;
+                                }
+                                else
+                                {
+                                    write_data_len += 4;
+                                }
+
+                                /* set column value (VARIABLE) */
+                                if (ctcn_link_write (link, set_col->val, set_col->val_len) 
+                                    != CTC_SUCCESS)
+                                {
+                                    is_ovf = CTC_TRUE;
+                                    break;
+                                }
+                                else
+                                {
+                                    write_data_len += set_col->val_len;
+                                }
+                            }
+
+                            break;
+
+                        case CTCL_STMT_TYPE_UPDATE:
+
+                            key_col = &log_item->update_log_info.key_col;
+
+                            /* 6. key column name length (4 BYTE) */
                             if (ctcn_link_write_four_byte_number 
-                                (link, (void *)&set_col->type) != CTC_SUCCESS)
+                                (link, (void *)&key_col->name_len) != CTC_SUCCESS)
                             {
                                 is_ovf = CTC_TRUE;
                                 break;
@@ -1987,20 +2047,8 @@ extern int ctcp_send_captured_data_result (void *inlink,
                                 write_data_len += 4;
                             }
 
-                            /* set column value length (4 BYTE) */
-                            if (ctcn_link_write_four_byte_number 
-                                (link, (void *)&set_col->val_len) != CTC_SUCCESS)
-                            {
-                                is_ovf = CTC_TRUE;
-                                break;
-                            }
-                            else
-                            {
-                                write_data_len += 4;
-                            }
-
-                            /* set column value (VARIABLE) */
-                            if (ctcn_link_write (link, set_col->val, set_col->val_len) 
+                            /* 7. key column name (VARIABLE) */
+                            if (ctcn_link_write (link, key_col->name, key_col->name_len) 
                                 != CTC_SUCCESS)
                             {
                                 is_ovf = CTC_TRUE;
@@ -2008,98 +2056,12 @@ extern int ctcp_send_captured_data_result (void *inlink,
                             }
                             else
                             {
-                                write_data_len += set_col->val_len;
+                                write_data_len += key_col->name_len;
                             }
-                        }
-                        
-                        break;
 
-                    case CTCL_STMT_TYPE_UPDATE:
-
-                        key_col = &log_item->update_log_info.key_col;
-
-                        /* 6. key column name length (4 BYTE) */
-                        if (ctcn_link_write_four_byte_number 
-                            (link, (void *)&key_col->name_len) != CTC_SUCCESS)
-                        {
-                            is_ovf = CTC_TRUE;
-                            break;
-                        }
-                        else
-                        {
-                            write_data_len += 4;
-                        }
-
-                        /* 7. key column name (VARIABLE) */
-                        if (ctcn_link_write (link, key_col->name, key_col->name_len) 
-                            != CTC_SUCCESS)
-                        {
-                            is_ovf = CTC_TRUE;
-                            break;
-                        }
-                        else
-                        {
-                            write_data_len += key_col->name_len;
-                        }
-
-                        /* 8. key column type (4 BYTE) */
-                        if (ctcn_link_write_four_byte_number 
-                            (link, (void *)&key_col->type) != CTC_SUCCESS)
-                        {
-                            is_ovf = CTC_TRUE;
-                            break;
-                        }
-                        else
-                        {
-                            write_data_len += 4;
-                        }
-
-                        /* 9. key column value length (4BYTE) */
-                        if (ctcn_link_write_four_byte_number 
-                            (link, (void *)&key_col->val_len) != CTC_SUCCESS)
-                        {
-                            is_ovf = CTC_TRUE;
-                            break;
-                        }
-                        else
-                        {
-                            write_data_len += 4;
-                        }
-
-                        /* 10. key column value (VARIABLE) */
-                        if (ctcn_link_write (link, key_col->val, key_col->val_len) 
-                            != CTC_SUCCESS)
-                        {
-                            is_ovf = CTC_TRUE;
-                            break;
-                        }
-                        else
-                        {
-                            write_data_len += key_col->val_len;
-                        }
-
-                        set_col_cnt = log_item->update_log_info.set_col_cnt;
-
-                        /* 11. set column count (4 BYTE)*/
-                        if (ctcn_link_write_four_byte_number (link, (void *)&set_col_cnt)
-                            != CTC_SUCCESS)
-                        {
-                            is_ovf = CTC_TRUE;
-                            break;
-                        }
-                        else
-                        {
-                            write_data_len += 4;
-                        }
-
-                        /* 12. set column info */
-                        CTCG_LIST_ITERATE (&(log_item->insert_log_info.set_col_list), itr)
-                        {
-                            set_col = (CTCL_COLUMN *)itr->obj;
-
-                            /* set column name length (4 BYTE) */
+                            /* 8. key column type (4 BYTE) */
                             if (ctcn_link_write_four_byte_number 
-                                (link, (void *)&set_col->name_len) != CTC_SUCCESS)
+                                (link, (void *)&key_col->type) != CTC_SUCCESS)
                             {
                                 is_ovf = CTC_TRUE;
                                 break;
@@ -2109,8 +2071,20 @@ extern int ctcp_send_captured_data_result (void *inlink,
                                 write_data_len += 4;
                             }
 
-                            /* set column name (VARIABLE) */
-                            if (ctcn_link_write (link, set_col->name, set_col->name_len) 
+                            /* 9. key column value length (4BYTE) */
+                            if (ctcn_link_write_four_byte_number 
+                                (link, (void *)&key_col->val_len) != CTC_SUCCESS)
+                            {
+                                is_ovf = CTC_TRUE;
+                                break;
+                            }
+                            else
+                            {
+                                write_data_len += 4;
+                            }
+
+                            /* 10. key column value (VARIABLE) */
+                            if (ctcn_link_write (link, key_col->val, key_col->val_len) 
                                 != CTC_SUCCESS)
                             {
                                 is_ovf = CTC_TRUE;
@@ -2118,35 +2092,13 @@ extern int ctcp_send_captured_data_result (void *inlink,
                             }
                             else
                             {
-                                write_data_len += set_col->name_len;
+                                write_data_len += key_col->val_len;
                             }
 
-                            /* set column type (4 BYTE) */
-                            if (ctcn_link_write_four_byte_number 
-                                (link, (void *)&set_col->type) != CTC_SUCCESS)
-                            {
-                                is_ovf = CTC_TRUE;
-                                break;
-                            }
-                            else
-                            {
-                                write_data_len += 4;
-                            }
+                            set_col_cnt = log_item->update_log_info.set_col_cnt;
 
-                            /* set column value length (4 BYTE) */
-                            if (ctcn_link_write_four_byte_number 
-                                (link, (void *)&set_col->val_len) != CTC_SUCCESS)
-                            {
-                                is_ovf = CTC_TRUE;
-                                break;
-                            }
-                            else
-                            {
-                                write_data_len += 4;
-                            }
-
-                            /* set column value (VARIABLE) */
-                            if (ctcn_link_write (link, set_col->val, set_col->val_len) 
+                            /* 11. set column count (4 BYTE)*/
+                            if (ctcn_link_write_four_byte_number (link, (void *)&set_col_cnt)
                                 != CTC_SUCCESS)
                             {
                                 is_ovf = CTC_TRUE;
@@ -2154,118 +2106,216 @@ extern int ctcp_send_captured_data_result (void *inlink,
                             }
                             else
                             {
-                                write_data_len += set_col->val_len;
+                                write_data_len += 4;
                             }
-                        }
-                        
+
+                            /* 12. set column info */
+                            CTCG_LIST_ITERATE (&(log_item->update_log_info.set_col_list), itr)
+                            {
+                                set_col = (CTCL_COLUMN *)itr->obj;
+
+                                /* set column name length (4 BYTE) */
+                                if (ctcn_link_write_four_byte_number 
+                                    (link, (void *)&set_col->name_len) != CTC_SUCCESS)
+                                {
+                                    is_ovf = CTC_TRUE;
+                                    break;
+                                }
+                                else
+                                {
+                                    write_data_len += 4;
+                                }
+
+                                /* set column name (VARIABLE) */
+                                if (ctcn_link_write (link, set_col->name, set_col->name_len) 
+                                    != CTC_SUCCESS)
+                                {
+                                    is_ovf = CTC_TRUE;
+                                    break;
+                                }
+                                else
+                                {
+                                    write_data_len += set_col->name_len;
+                                }
+
+                                /* set column type (4 BYTE) */
+                                if (ctcn_link_write_four_byte_number 
+                                    (link, (void *)&set_col->type) != CTC_SUCCESS)
+                                {
+                                    is_ovf = CTC_TRUE;
+                                    break;
+                                }
+                                else
+                                {
+                                    write_data_len += 4;
+                                }
+
+                                /* set column value length (4 BYTE) */
+                                if (ctcn_link_write_four_byte_number 
+                                    (link, (void *)&set_col->val_len) != CTC_SUCCESS)
+                                {
+                                    is_ovf = CTC_TRUE;
+                                    break;
+                                }
+                                else
+                                {
+                                    write_data_len += 4;
+                                }
+
+                                /* set column value (VARIABLE) */
+                                if (ctcn_link_write (link, set_col->val, set_col->val_len) 
+                                    != CTC_SUCCESS)
+                                {
+                                    is_ovf = CTC_TRUE;
+                                    break;
+                                }
+                                else
+                                {
+                                    write_data_len += set_col->val_len;
+                                }
+                            }
+
+                            break;
+
+                        case CTCL_STMT_TYPE_DELETE:
+
+                            key_col = &log_item->delete_log_info.key_col;
+
+                            /* 6. key column name length (4 BYTE) */
+                            if (ctcn_link_write_four_byte_number 
+                                (link, (void *)&key_col->name_len) != CTC_SUCCESS)
+                            {
+                                is_ovf = CTC_TRUE;
+                                break;
+                            }
+                            else
+                            {
+                                write_data_len += 4;
+                            }
+
+                            /* 7. key column name (VARIABLE) */
+                            if (ctcn_link_write (link, key_col->name, key_col->name_len) 
+                                != CTC_SUCCESS)
+                            {
+                                is_ovf = CTC_TRUE;
+                                break;
+                            }
+                            else
+                            {
+                                write_data_len += key_col->name_len;
+                            }
+
+                            /* 8. key column type (4 BYTE) */
+                            if (ctcn_link_write_four_byte_number 
+                                (link, (void *)&key_col->type) != CTC_SUCCESS)
+                            {
+                                is_ovf = CTC_TRUE;
+                                break;
+                            }
+                            else
+                            {
+                                write_data_len += 4;
+                            }
+
+                            /* 9. key column value length (4BYTE) */
+                            if (ctcn_link_write_four_byte_number 
+                                (link, (void *)&key_col->val_len) != CTC_SUCCESS)
+                            {
+                                is_ovf = CTC_TRUE;
+                                break;
+                            }
+                            else
+                            {
+                                write_data_len += 4;
+                            }
+
+                            /* 10. key column value (VARIABLE) */
+                            if (ctcn_link_write (link, key_col->val, key_col->val_len) 
+                                != CTC_SUCCESS)
+                            {
+                                is_ovf = CTC_TRUE;
+                                break;
+                            }
+                            else
+                            {
+                                write_data_len += key_col->val_len;
+                            }
+
+                            break;
+
+                        default:
+                            break;
+                    }
+
+                    if (is_ovf == CTC_TRUE)
+                    {
                         break;
-
-                    case CTCL_STMT_TYPE_DELETE:
-
-                        key_col = &log_item->delete_log_info.key_col;
-
-                        /* 6. key column name length (4 BYTE) */
-                        if (ctcn_link_write_four_byte_number 
-                            (link, (void *)&key_col->name_len) != CTC_SUCCESS)
-                        {
-                            is_ovf = CTC_TRUE;
-                            break;
-                        }
-                        else
-                        {
-                            write_data_len += 4;
-                        }
-
-                        /* 7. key column name (VARIABLE) */
-                        if (ctcn_link_write (link, key_col->name, key_col->name_len) 
-                            != CTC_SUCCESS)
-                        {
-                            is_ovf = CTC_TRUE;
-                            break;
-                        }
-                        else
-                        {
-                            write_data_len += key_col->name_len;
-                        }
-
-                        /* 8. key column type (4 BYTE) */
-                        if (ctcn_link_write_four_byte_number 
-                            (link, (void *)&key_col->type) != CTC_SUCCESS)
-                        {
-                            is_ovf = CTC_TRUE;
-                            break;
-                        }
-                        else
-                        {
-                            write_data_len += 4;
-                        }
-
-                        /* 9. key column value length (4BYTE) */
-                        if (ctcn_link_write_four_byte_number 
-                            (link, (void *)&key_col->val_len) != CTC_SUCCESS)
-                        {
-                            is_ovf = CTC_TRUE;
-                            break;
-                        }
-                        else
-                        {
-                            write_data_len += 4;
-                        }
-
-                        /* 10. key column value (VARIABLE) */
-                        if (ctcn_link_write (link, key_col->val, key_col->val_len) 
-                            != CTC_SUCCESS)
-                        {
-                            is_ovf = CTC_TRUE;
-                            break;
-                        }
-                        else
-                        {
-                            write_data_len += key_col->val_len;
-                        }
-
-                        break;
-
-                    default:
-                        break;
+                    }
+                    else
+                    {
+                        remained_item_cnt--;
+                        continue;
+                    }
                 }
 
-                if (is_ovf == CTC_TRUE)
+                /* remained log item count is 0 */
+                if (is_ovf != CTC_TRUE)
                 {
-                    break;
+                    total_data_len += write_data_len;
                 }
                 else
                 {
-                    remained_item_cnt--;
-                    continue;
+                    if (total_data_len > 0)
+                    {
+                        /* adjust remained log item count */
+                        /* 1 log record size must less than CTCP_PACKET_DATA_MAX_LEN */
+                        read_item_cnt--;
+
+                        CTC_TEST_EXCEPTION (ctcn_link_backward_wbuf_pos (link, write_data_len),
+                                            err_write_buf_overflow_label);
+
+                        /* initialize write data length */
+                        write_data_len = 0;
+
+                        /* fill 2. the number of item (4BYTE) */
+                        ctcn_link_move_wbuf_pos (link, num_of_item_wbuf_pos);
+
+                        (void)ctcn_link_write_four_byte_number (link, (void *)&read_item_cnt);
+                        read_item_cnt = 0;
+
+                        /* set result code */
+                        result_code = CTCP_RC_SUCCESS_FRAGMENTED;
+
+                        /* make ctcp header */
+                        CTC_TEST_EXCEPTION (ctcp_make_protocol_header (link,
+                                                                       (unsigned char)CTCP_CAPTURED_DATA_RESULT,
+                                                                       (unsigned char)result_code,
+                                                                       job_desc,
+                                                                       sgid,
+                                                                       total_data_len),
+                                            err_make_protocol_header_label);
+
+                        /* send packet */
+                        CTC_TEST_EXCEPTION (ctcn_link_send (link), err_link_send_label);
+                    }
+                    else
+                    {
+                        /* not need to send */
+                    }
                 }
             }
 
-            if (is_ovf != CTC_TRUE)
+            if (total_data_len > 0)
             {
-                total_data_len += write_data_len;
-            }
-            else
-            {
-                /* adjust remained log item count */
-                /* 1 log record size must less than CTCP_PACKET_DATA_MAX_LEN */
-                read_item_cnt--;
-
-                CTC_TEST_EXCEPTION (ctcn_link_backward_wbuf_pos (link, write_data_len),
-                                    err_write_buf_overflow_label);
-
-                /* initialize write data length */
-                write_data_len = 0;
-
                 /* fill 2. the number of item (4BYTE) */
                 ctcn_link_move_wbuf_pos (link, num_of_item_wbuf_pos);
 
                 (void)ctcn_link_write_four_byte_number (link, (void *)&read_item_cnt);
+                read_item_cnt = 0;
 
-                /* set result code */
-                result_code = CTCP_RC_SUCCESS_FRAGMENTED;
+                result_code = CTCP_RC_SUCCESS;
 
-                /* make ctcp header */
+                /* make protocol header */
                 CTC_TEST_EXCEPTION (ctcp_make_protocol_header (link,
                                                                (unsigned char)CTCP_CAPTURED_DATA_RESULT,
                                                                (unsigned char)result_code,
@@ -2274,30 +2324,27 @@ extern int ctcp_send_captured_data_result (void *inlink,
                                                                total_data_len),
                                     err_make_protocol_header_label);
 
-                /* send packet */
+                ctcn_link_move_wbuf_pos (link, CTCP_HDR_LEN + total_data_len);
+
+                /* send */
                 CTC_TEST_EXCEPTION (ctcn_link_send (link), err_link_send_label);
+
+        //        last_processed_tid = tid;
+
+                /* transaction end */
+                if (log_item_list->ref_cnt > 0)
+                {
+                    log_item_list->ref_cnt--;
+                }
             }
-        }
-
-        result_code = CTCP_RC_SUCCESS;
-
-        /* make protocol header */
-        CTC_TEST_EXCEPTION (ctcp_make_protocol_header (link,
-                                                       (unsigned char)CTCP_CAPTURED_DATA_RESULT,
-                                                       (unsigned char)result_code,
-                                                       job_desc,
-                                                       sgid,
-                                                       total_data_len),
-                            err_make_protocol_header_label);
-
-        /* send */
-        CTC_TEST_EXCEPTION (ctcn_link_send (link), err_link_send_label);
-
-        if (log_item_list->ref_cnt > 0)
-        {
-            log_item_list->ref_cnt--;
-        }
+//        }
+//        else
+//        {
+            /* already processed transaction */ 
+//        }
     }
+
+    /* set tid to last processed tid */
 
     return CTC_SUCCESS;
 

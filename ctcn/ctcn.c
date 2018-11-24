@@ -420,19 +420,34 @@ extern int ctcn_sock_poll (CTC_SOCK *sock, int event, int timeout)
     ret = epoll_ctl (handle, EPOLL_CTL_ADD, sock->handle, &epl_event);
     CTC_COND_EXCEPTION (ret == -1, err_epoll_add_failed_label);
 
-    ret = epoll_wait (handle, &epl_change, 1, time_out);
+    while (1)
+    {
+        ret = epoll_wait (handle, &epl_change, 1, time_out);
 
-    if (ret == -1)
-    {
-        result = errno;
-    }
-    else if (ret == 0)
-    {
-        result = CTCN_RESULT_ETIMEDOUT;
-    }
-    else
-    {
-        result = CTC_SUCCESS;
+        if (ret == -1)
+        {
+            if (errno != EINTR)
+            {
+                /* DEBUG */
+                fprintf (stderr, "ctcn_sock_poll: errno = %d\n", errno);
+                result = errno;
+                break;
+            }
+            else
+            {
+                continue;
+            }
+        }
+        else if (ret == 0)
+        {
+            result = CTCN_RESULT_ETIMEDOUT;
+            break;
+        }
+        else
+        {
+            result = CTC_SUCCESS;
+            break;
+        }
     }
 
     ret = epoll_ctl (handle, EPOLL_CTL_DEL, sock->handle, &epl_event);
@@ -535,6 +550,8 @@ static int ctcn_sock_send (CTC_SOCK *sock,
         fflush (stdout);
 
         CTC_COND_EXCEPTION (send_result == -1, err_sock_send_label);
+
+        memset (buf, 0, buf_size);
     }
 
     if (send_size != NULL)
@@ -883,6 +900,8 @@ extern int ctcn_link_poll_socket (CTCN_LINK *link,
     CTC_EXCEPTION(err_sock_poll_label)
     {
         /* select socket error */
+        fprintf (stderr, "err_sock_poll_label\n");
+        fflush (stderr);
     }
     EXCEPTION_END;
 

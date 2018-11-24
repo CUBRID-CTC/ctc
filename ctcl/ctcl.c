@@ -2294,7 +2294,9 @@ static int ctcl_info_pre_alloc (void)
         {
             case 3: log_zip_free (ctcl_Mgr.log_info.undo_unzip_ptr);
             case 2: free (ctcl_Mgr.log_info.rec_type);
+                    ctcl_Mgr.log_info.rec_type = NULL;
             case 1: free (ctcl_Mgr.log_info.log_data);
+                    ctcl_Mgr.log_info.log_data = NULL;
                 break;
         }
 
@@ -2410,9 +2412,11 @@ static int ctcl_init_trans_log_list (BOOL is_need_realloc)
             for (i = 0; i < alloced_trans; i++)
             {
                 free (ctcl_Mgr.log_info.trans_log_list[i]);
+                ctcl_Mgr.log_info.trans_log_list[i] = NULL;
             }
 
             free (ctcl_Mgr.log_info.trans_log_list);
+            ctcl_Mgr.log_info.trans_log_list = NULL;
         }
 
         result = CTC_ERR_ALLOC_FAILED;
@@ -4024,12 +4028,14 @@ static void ctcl_free_log_item (CTCL_TRANS_LOG_LIST *trans_log_list,
     if (item->table_name != NULL)
     {
         free (item->table_name);
+        item->table_name = NULL;
         pr_clear_value (&item->key);
     }
 
     if (item->db_user != NULL)
     {
         free (item->db_user);
+        item->db_user = NULL;
     }
 
     free (item);    
@@ -4922,6 +4928,7 @@ static int ctcl_get_overflow_recdes (CTCL_LOG_RECORD_HEADER *log_record,
                 }
 
                 free (ovf_list_data);
+                ovf_list_data = NULL;
             }
         }
 
@@ -5772,10 +5779,7 @@ static int ctcl_log_record_process (CTCL_LOG_RECORD_HEADER *lrec,
 
                     }
                 }
-                while (!CTCL_LSA_ISNULL (&lsa_apply));	/* if lsa_apply is not null then
-                                                         * there is the replication log
-                                                         * applying to the slave
-                                                         */
+                while (!CTCL_LSA_ISNULL (&lsa_apply));
             }
             else
             {
@@ -6234,9 +6238,6 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
             }
             else 
             {
-                fprintf (stdout, " [B] empty fetch count = %d\n", empty_fetch_cnt);
-                fflush (stdout);
-
                 if (ctcl_check_page_exist (ctcl_Mgr.log_info.final_lsa.pageid) 
                     != CTCL_PAGE_EXST_IN_ACTIVE_LOG)
                 {
@@ -6249,6 +6250,7 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
                 }
                 else
                 {
+                    /*
                     fprintf (stdout, "ctcl_Mgr.log_info.final_lsa.pageid = %d\n \ 
                                       act_log.log_hdr.append_lsa.pageid = %d\n", 
                                       ctcl_Mgr.log_info.final_lsa.pageid, 
@@ -6256,6 +6258,7 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
 
                     fprintf (stdout, " page exist in aCtive log.\n");
                     fflush (stdout);
+                    */
                 }
             }
 
@@ -6267,12 +6270,14 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
                                             CTCL_LOGPAGEID_MAX);
 
             /* DEBUG */
+            /*
             ctcl_Mgr.cur_job_cnt = 1;
 
             if (ctcl_Mgr.cur_job_cnt == 0)
             {
                 continue;
             }
+            */
 
             /* DEBUG */
             if (ctcl_Mgr.log_info.final_lsa.pageid 
@@ -6425,7 +6430,7 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
                 ctcl_Mgr.last_tid = lrec->trid;
 
                 /* DEBUG */
-                ctcl_Mgr.cur_job_cnt = 1;
+//                ctcl_Mgr.cur_job_cnt = 1;
 
                 if (ctcl_Mgr.cur_job_cnt > 0)
                 {
@@ -6465,18 +6470,12 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
                     break;
                 }
 
-                /*
-                if (lrec->trid >= ctcl_Mgr.first_tid)
-                {
-                    continue;
-                }
-                */
-
                 /* DEBUG */
-//                printf ("record type = %d\n record tid = %d\n", lrec->type, lrec->trid);
+                printf ("record type = %d\n record tid = %d\n", lrec->type, lrec->trid);
 
-                printf ("\nBEFORE PROCESS RECORD: ctcl_Mgr.log_info.final_lsa.pageid = %d\n",
-                        ctcl_Mgr.log_info.final_lsa.pageid);
+//                printf ("\nBEFORE PROCESS RECORD: ctcl_Mgr.log_info.final_lsa.pageid = %d\n",
+//                        ctcl_Mgr.log_info.final_lsa.pageid);
+//
                 /* process the log record */
                 result = ctcl_log_record_process (lrec, 
                                                   &ctcl_Mgr.log_info.final_lsa, 

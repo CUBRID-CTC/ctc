@@ -818,6 +818,8 @@ extern int ctcs_sg_get_job_status (CTCS_SESSION_GROUP *sg,
     result = ctcs_job_session_get_job_status (job_session, &status);
     CTC_COND_EXCEPTION (result != CTC_SUCCESS, err_get_job_status_label);
 
+    *job_status = status;
+
     return CTC_SUCCESS;
 
     CTC_EXCEPTION (err_get_job_status_label)
@@ -1063,8 +1065,7 @@ extern int ctcs_sg_is_table_registered (CTCS_SESSION_GROUP *sg,
 
             if (table_info != NULL)
             {
-                if (strcmp (table_info->name, table_name) == 0 &&
-                    strcmp (table_info->user, user_name) == 0)
+                if (strcmp (table_info->name, table_name) == 0)
                 {
                     /* found table */
                     *is_exist = CTC_TRUE;
