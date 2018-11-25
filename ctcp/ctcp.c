@@ -1853,6 +1853,42 @@ extern int ctcp_send_captured_data_result (void *inlink,
 
             while (remained_item_cnt > 0)
             {
+                if (next_log_item->stmt_type < CTCL_STMT_TYPE_INSERT || 
+                    next_log_item->stmt_type > CTCL_STMT_TYPE_DELETE)
+                {
+                    next_log_item = next_log_item->next;
+                    remained_item_cnt--;
+                    continue;
+                }
+
+                ctcn_link_move_wbuf_pos (link, CTCP_HDR_LEN);
+
+                /* 1. transaction id (4 BYTE) */
+                if (ctcn_link_write_four_byte_number (link, (void *)&tid) 
+                    != CTC_SUCCESS)
+                {
+                    is_ovf = CTC_TRUE;
+                    break;
+                }
+                else
+                {
+                    write_data_len += 4;
+                }
+
+                /* 2. the number of items (4 BYTE) write later, 
+                 *    only increase write_data_len by offset */
+                if (ctcn_link_forward_wbuf_pos (link, sizeof (int)) 
+                    != CTC_SUCCESS)
+                {
+                    is_ovf = CTC_TRUE;
+                    break;
+                }
+                else
+                {
+                    num_of_item_wbuf_pos = CTCN_HDR_LEN + write_data_len;
+                    write_data_len += sizeof (int);
+                }
+
                 for (read_item_cnt; 
                      read_item_cnt < log_item_list->item_num; 
                      read_item_cnt++)
@@ -1879,32 +1915,6 @@ extern int ctcp_send_captured_data_result (void *inlink,
                     {
                         /* skip this log item */
                         continue;
-                    }
-
-                    /* 1. transaction id (4 BYTE) */
-                    if (ctcn_link_write_four_byte_number (link, (void *)&tid) 
-                        != CTC_SUCCESS)
-                    {
-                        is_ovf = CTC_TRUE;
-                        break;
-                    }
-                    else
-                    {
-                        write_data_len += 4;
-                    }
-
-                    /* 2. the number of items (4 BYTE) write later, 
-                     *    only increase write_data_len by offset */
-                    if (ctcn_link_forward_wbuf_pos (link, sizeof (int)) 
-                        != CTC_SUCCESS)
-                    {
-                        is_ovf = CTC_TRUE;
-                        break;
-                    }
-                    else
-                    {
-                        num_of_item_wbuf_pos = CTCN_HDR_LEN + write_data_len;
-                        write_data_len += sizeof (int);
                     }
 
                     /* 3. table_name length (4 BYTE) */
@@ -2309,6 +2319,9 @@ extern int ctcp_send_captured_data_result (void *inlink,
             {
                 /* fill 2. the number of item (4BYTE) */
                 ctcn_link_move_wbuf_pos (link, num_of_item_wbuf_pos);
+
+                fprintf (stdout, "read_item_cnt = %d\n", read_item_cnt);
+                fflush (stdout);
 
                 (void)ctcn_link_write_four_byte_number (link, (void *)&read_item_cnt);
                 read_item_cnt = 0;

@@ -3030,7 +3030,7 @@ static int ctcl_process_insert_log (CTCL_ITEM *item)
 static int ctcl_process_delete_log (CTCL_ITEM *item)
 {
     int result;
-    int con_name_len;
+    int col_name_len;
     MOBJ mclass;
     DB_OBJECT *class_obj;
     DB_OTMPL *inst_tp = NULL;
@@ -3056,11 +3056,12 @@ static int ctcl_process_delete_log (CTCL_ITEM *item)
 
     ctcl_item_delete_log_info_init (item);
 
-    con_name_len = strlen (cons->attributes[0]->header.name);
+    col_name_len = strlen (cons->attributes[0]->header.name);
+    item->delete_log_info.key_col.name_len = col_name_len;
 
     memcpy (item->delete_log_info.key_col.name, 
             cons->attributes[0]->header.name,
-            con_name_len);
+            col_name_len);
 
     item->delete_log_info.key_col.type = value_type;
 
@@ -3478,6 +3479,8 @@ static int ctcl_get_update_current (OR_BUF *buf,
 
     att = sm_class->attributes;
 
+    item->update_log_info.set_col_cnt = sm_class->fixed_count;
+
     /* process the fixed length column */
     for (i = 0; 
          i < sm_class->fixed_count; 
@@ -3500,6 +3503,8 @@ static int ctcl_get_update_current (OR_BUF *buf,
             {
                 /* 1. column name */
                 col_name_len = strlen (att->header.name);
+                item->update_log_info.key_col.name_len = col_name_len;
+
                 memcpy (item->update_log_info.key_col.name,
                         att->header.name,
                         col_name_len);
@@ -3541,6 +3546,8 @@ static int ctcl_get_update_current (OR_BUF *buf,
 
                 /* 1. column name */
                 col_name_len = strlen (att->header.name);
+                set_col->name_len = col_name_len;
+
                 memcpy (set_col->name, att->header.name, col_name_len);
 
                 /* 2. column type */
@@ -3628,6 +3635,8 @@ static int ctcl_get_update_current (OR_BUF *buf,
 
         /* 1. column name */
         col_name_len = strlen (att->header.name);
+        set_col->name_len = col_name_len;
+
         memcpy (set_col->name, att->header.name, col_name_len);
 
         /* 2. column type */
@@ -3806,6 +3815,8 @@ static int ctcl_get_insert_current (OR_BUF *buf,
 
             /* 1. column name */
             col_name_len = strlen (att->header.name);
+            set_col->name_len = col_name_len;
+
             memcpy (set_col->name, att->header.name, col_name_len);
 
             /* 2. column type */
@@ -3893,6 +3904,8 @@ static int ctcl_get_insert_current (OR_BUF *buf,
 
         /* 1. column name */
         col_name_len = strlen (att->header.name);
+        set_col->name_len = col_name_len;
+
         memcpy (set_col->name, att->header.name, col_name_len);
 
         /* 2. column type */
@@ -4027,8 +4040,10 @@ static void ctcl_free_log_item (CTCL_TRANS_LOG_LIST *trans_log_list,
 
     if (item->table_name != NULL)
     {
-        free (item->table_name);
-        item->table_name = NULL;
+//        free (item->table_name);
+//        item->table_name = NULL;
+
+        db_private_free_and_init (NULL, item->table_name);
         pr_clear_value (&item->key);
     }
 
@@ -6114,12 +6129,18 @@ static void *ctcl_trans_remover_thr_func (void)
                 if (list->is_committed == CTC_TRUE &&
                     list->ref_cnt == 0)
                 {
+                    sleep (2);
+
+                    ctcl_free_log_items_by_tranid (list->tid);
+/*
                     ctcl_free_all_log_items (list);
+                    list->is_committed = CTC_FALSE;
                     list->tid = CTCL_TRAN_NULL_ID;
                     list->item_num = 0;
-                    list->is_committed = CTC_FALSE;
                     CTCL_LSA_SET_NULL (&list->start_lsa);
                     CTCL_LSA_SET_NULL (&list->last_lsa);
+*/
+                    list->is_committed = CTC_FALSE;
 
                     if (list->long_tx_flag == CTC_TRUE &&
                         list->long_trans_log_list != NULL)
@@ -6129,9 +6150,8 @@ static void *ctcl_trans_remover_thr_func (void)
                     }
                     else
                     {
-                        /* no long transaction */
+                        // no long transaction
                     }
-
                 }
                 else
                 {
@@ -6197,10 +6217,12 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
                        &ctcl_Mgr.log_info.final_lsa);
 
         /* DEBUG */
+        /*
         printf ("ctcl_Mgr.log_info.final_lsa.pageid = %d\n \
                 act_log.log_hdr.append_lsa.pageid = %d\n", 
                 ctcl_Mgr.log_info.final_lsa.pageid, 
                 ctcl_Mgr.log_info.act_log.log_hdr->append_lsa.pageid);
+                */
 
         /* DEBUG */
         int empty_fetch_cnt = 0;
@@ -6215,10 +6237,12 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
             if (CTCL_LSA_GE (&ctcl_Mgr.log_info.final_lsa, 
                              (CTCL_LOG_LSA *)&ctcl_Mgr.log_info.act_log.log_hdr->append_lsa))
             {
+                /*
                 printf ("ctcl_Mgr.log_info.final_lsa.pageid = %d\n \
                          act_log.log_hdr.append_lsa.pageid = %d\n", 
                          ctcl_Mgr.log_info.final_lsa.pageid, 
                          ctcl_Mgr.log_info.act_log.log_hdr->append_lsa.pageid);
+                         */
                 empty_fetch_cnt++;
                 fprintf (stdout, " [A] empty fetch count = %d\n", empty_fetch_cnt);
                 fflush (stdout);
@@ -6280,6 +6304,7 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
             */
 
             /* DEBUG */
+            /*
             if (ctcl_Mgr.log_info.final_lsa.pageid 
                 != ctcl_Mgr.log_info.act_log.log_hdr->eof_lsa.pageid)
             {
@@ -6291,6 +6316,7 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
                         ctcl_Mgr.log_info.act_log.log_hdr->eof_lsa.pageid,
                         ctcl_Mgr.log_info.act_log.log_hdr->append_lsa.pageid);
             }
+            */
 
             memset (&final_log_hdr, 0, sizeof (struct log_header));
             memcpy (&final_log_hdr, 
@@ -6300,7 +6326,7 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
             if ((final_log_hdr.eof_lsa.pageid < ctcl_Mgr.log_info.final_lsa.pageid) &&
                 (final_log_hdr.eof_lsa.offset < ctcl_Mgr.log_info.final_lsa.offset))
             {
-                printf ("THIS_1");
+             //   printf ("THIS_1");
                 usleep (100 * 1000);
                 continue;
             }
@@ -6390,7 +6416,7 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
 
             /* DEBUG */
             ctcl_Mgr.first_tid = ctcl_Mgr.last_tid + 1;
-            printf("valid page read count = %d\n", valid_pg_read_cnt);
+//            printf("valid page read count = %d\n", valid_pg_read_cnt);
 
             while (ctcl_Mgr.log_info.final_lsa.pageid == log_buf->pageid && 
                    ctcl_Mgr.need_stop_analyzer == CTC_FALSE)
@@ -6413,7 +6439,7 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
                                       (CTCL_LOG_LSA *)&final_log_hdr.append_lsa))
                 {
                     /* DEBUG */
-                    printf ("HERE1\n");
+ //                   printf ("HERE1\n");
 
                     ctcl_decache_page_buffer (log_buf);
                     break;
@@ -6471,7 +6497,7 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
                 }
 
                 /* DEBUG */
-                printf ("record type = %d\n record tid = %d\n", lrec->type, lrec->trid);
+//                printf ("record type = %d\n record tid = %d\n", lrec->type, lrec->trid);
 
 //                printf ("\nBEFORE PROCESS RECORD: ctcl_Mgr.log_info.final_lsa.pageid = %d\n",
 //                        ctcl_Mgr.log_info.final_lsa.pageid);

@@ -153,6 +153,7 @@ extern void ctcj_finalize (void)
 
                     while (status == CTCJ_JOB_PROCESSING)
                     {
+                        status = CTCJ_JOB_IMMEDIATE_STOPPED;
                         sleep (1);
                     }
                 }
