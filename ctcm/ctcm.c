@@ -198,8 +198,10 @@ int main (int argc, char **argv)
     strncpy (ctcl_conf_items.log_path, log_file_path, strlen(log_file_path));
 
     /* DEBUG */
+    /*
     fprintf (stdout, " Active log file path =\n\t %s\n", ctcl_conf_items.log_path);
     fflush (stdout);
+    */
 
     /* log analyzer start */
     CTC_TEST_EXCEPTION (ctcl_initialize (&ctcl_conf_items, &la_thr_id, &tr_thr_id), 
@@ -332,6 +334,7 @@ static int ctc_load_conf (void)
     CTC_TEST_EXCEPTION (ctcg_load_conf (), err_load_conf_label);
 
     /* >>> DEBUG */
+    /*
     int i;
     for (i = 0; i < CTCG_CONF_ID_LAST; i++)
     {
@@ -349,6 +352,7 @@ static int ctc_load_conf (void)
         {
         }
     }
+    */
     /* <<< DEBUG */
 
     return CTC_SUCCESS;
@@ -384,7 +388,7 @@ static int ctc_start_listen (unsigned short ctc_port)
     CTCP_HEADER header;
 
     /* DEBUG */
-    int test_cnt = 1;
+//    int test_cnt = 1;
 
     /* 1. setup listen socket */
     CTC_TEST_EXCEPTION (ctc_make_link (&link), err_make_link_failed_label);

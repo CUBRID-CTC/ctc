@@ -4501,23 +4501,9 @@ static int ctcl_get_undoredo_diff (CTCL_LOG_PAGE **pgptr,
 }
 
 /*
- * la_get_log_data() - get the data area of log record
- *   return: error code
- *   lrec (in) : target log record
- *   lsa (in) : the LSA of the target log record
- *   pgptr (in) : the start log page pointer
- *   match_rcvindex (in) : index
- *   rcvindex : recovery index to be returned
- *   logs : the specialized log info
- *   old_type : the type of old RECDES
- *   old_data : the old log data
- *   old_length : the length of old data
- *   rec_type : the type of RECDES
- *   data : the log data
- *   d_length : the length of data
+ * Description: modified from la_get_log_data()
+ *              get the data area of log record
  *
- * Note: get the data area, and rcvindex, length of data for the
- *              given log record
  */
 static int ctcl_get_log_data (CTCL_LOG_RECORD_HEADER *lrec, 
                               CTCL_LOG_LSA *lsa, 
@@ -5022,18 +5008,9 @@ static int ctcl_get_overflow_recdes (CTCL_LOG_RECORD_HEADER *log_record,
 }
 
 /*
- * la_get_next_update_log() - get the right update log
- *   return: CTC_SUCCESS or error code
- *   prev_lrec(in):  prev log record
- *   pgptr(in):  the start log page pointer
- *   logs(out) : the specialized log info
- *   rec_type(out) : the type of RECDES
- *   data(out) : the log data
- *   d_length(out): the length of data
+ * Description: modified from la_get_next_update_log()
+ *              get the right update log
  *
- * Note:
- *      When the applier meets the REC_ASSIGN_ADDRESS or REC_RELOCATION
- *      record, it should fetch the real UPDATE log record to be processed.
  */
 static int ctcl_get_next_update_log (CTCL_LOG_RECORD_HEADER *prev_lrec, 
                                      CTCL_LOG_PAGE *pgptr, 
@@ -5431,14 +5408,9 @@ static int ctcl_get_recdes (CTCL_LOG_LSA *lsa,
 
 
 /*
- * la_apply_commit_list() - apply the log to the target slave
- *   return: CTC_SUCCESS or error code
- *   lsa   : the target LSA of the log
- *   final_pageid : the final pageid
+ * Description: modified from la_apply_commit_list()
+ *              apply the log to the target slave
  *
- * Note:
- *    This function is called when the APPLY thread meets the LOG_COMMIT
- *    record.
  */
 static int ctcl_apply_commit_list (CTCL_LOG_LSA *lsa, 
                                    CTCL_LOG_PAGEID final_pageid)
@@ -5494,17 +5466,8 @@ static int ctcl_apply_commit_list (CTCL_LOG_LSA *lsa,
 }
 
 /*
- * la_free_repl_items_by_tranid() - clear replication item using tranid
- *   return: none
- *   tranid: transaction id
- *
- * Note:
- *       clear the applied list area after processing ..
- *       When we meet the LOG_ABORT_TOPOPE or LOG_ABORT record,
- *       we have to clear the replication items of the target transaction.
- *       In case of LOG_ABORT_TOPOPE, the apply list should be preserved
- *       for the later use (so call la_clear_applied_info() using
- *       CTC_FALSE as the second argument).
+ * Description: modified from la_free_repl_items_by_tranid()
+ *              clear replication item using tranid
  */
 static void ctcl_free_log_items_by_tranid (int tid)
 {
@@ -6225,7 +6188,7 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
                 */
 
         /* DEBUG */
-        int empty_fetch_cnt = 0;
+//        int empty_fetch_cnt = 0;
 
         /* start loop for apply */
         while (!CTCL_LSA_ISNULL (&ctcl_Mgr.log_info.final_lsa) &&
@@ -6243,19 +6206,21 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
                          ctcl_Mgr.log_info.final_lsa.pageid, 
                          ctcl_Mgr.log_info.act_log.log_hdr->append_lsa.pageid);
                          */
+                /*
                 empty_fetch_cnt++;
                 fprintf (stdout, " [A] empty fetch count = %d\n", empty_fetch_cnt);
                 fflush (stdout);
+                */
 
                 if (ctcl_Mgr.need_stop_analyzer != CTC_TRUE)
                 {
-                    sleep (30);
+                    usleep (100 * 1000);
                     continue;
                 }
                 else
                 {
-                    fprintf (stdout, "[A] Now shutdown ctcl\n");
-                    fflush (stdout);
+                //    fprintf (stdout, "[A] Now shutdown ctcl\n");
+                //    fflush (stdout);
 
                     break;
                 }
