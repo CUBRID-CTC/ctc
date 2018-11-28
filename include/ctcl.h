@@ -35,7 +35,7 @@
 #define CTCL_DEFAULT_CACHE_BUFFER_SIZE            (100)
 #define CTCL_DEFAULT_LOG_PAGE_SIZE                (4096)
 #define CTCL_RETRY_COUNT                          (50)
-#define CTCL_TRANS_LOG_LIST_COUNT                 (1000)
+#define CTCL_TRANS_LOG_LIST_COUNT                 (3000)
 #define CTCL_NULL_VOLDES                          (-1)
 #define CTCL_NULL_OFFSET                          (-1)
 
@@ -221,6 +221,9 @@ extern void ctcl_finalize(void);
 
 /* log manager functions */
 extern int ctcl_mgr_get_extracted_log_cnt (void);
+extern int ctcl_mgr_get_insert_cnt (void);
+extern int ctcl_mgr_get_update_cnt (void);
+extern int ctcl_mgr_get_delete_cnt (void);
 extern int ctcl_mgr_lock (void);
 extern int ctcl_mgr_unlock (void);
 extern int ctcl_mgr_get_status_nolock (void);

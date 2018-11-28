@@ -437,6 +437,10 @@ struct ctcl_mgr
     int last_tid;           /* last read transaction id */
     int cur_job_cnt;        /* started job count */
     int read_log_cnt;
+
+    unsigned int insert_cnt;
+    unsigned int update_cnt;
+    unsigned int delete_cnt;
     pthread_mutex_t lock;
 
     char src_db_name[CTCL_NAME_MAX];
@@ -749,6 +753,9 @@ extern int ctcl_initialize (CTCL_CONF_ITEMS *conf_items,
     ctcl_Mgr.last_tid = CTCL_TRAN_NULL_ID;
     ctcl_Mgr.cur_job_cnt = 0;
     ctcl_Mgr.read_log_cnt = 0;
+    ctcl_Mgr.insert_cnt = 0;
+    ctcl_Mgr.update_cnt = 0;
+    ctcl_Mgr.delete_cnt = 0;
 
     memset (ctcl_Mgr.src_db_name, 0, CTCL_NAME_MAX);
 
@@ -870,6 +877,24 @@ extern int ctcl_initialize (CTCL_CONF_ITEMS *conf_items,
 extern int ctcl_mgr_get_extracted_log_cnt (void)
 {
     return ctcl_Mgr.read_log_cnt;
+}
+
+
+extern int ctcl_mgr_get_insert_cnt (void)
+{
+    return ctcl_Mgr.insert_cnt;
+}
+
+
+extern int ctcl_mgr_get_update_cnt (void)
+{
+    return ctcl_Mgr.update_cnt;
+}
+
+
+extern int ctcl_mgr_get_delete_cnt (void)
+{
+    return ctcl_Mgr.delete_cnt;
 }
 
 
@@ -2773,6 +2798,7 @@ static CTCL_ITEM *ctcl_make_item (CTCL_LOG_PAGE *log_pg,
             {
                 case RVREPL_DATA_INSERT:
                     item->stmt_type = CTCL_STMT_TYPE_INSERT;
+                    ctcl_Mgr.insert_cnt++;
                     ctcl_process_insert_log (item);
                     break;
 
@@ -2780,11 +2806,13 @@ static CTCL_ITEM *ctcl_make_item (CTCL_LOG_PAGE *log_pg,
                 case RVREPL_DATA_UPDATE_END:
                 case RVREPL_DATA_UPDATE:
                     item->stmt_type = CTCL_STMT_TYPE_UPDATE;
+                    ctcl_Mgr.update_cnt++;
                     ctcl_process_update_log (item);
                     break;
 
                 case RVREPL_DATA_DELETE:
                     item->stmt_type = CTCL_STMT_TYPE_DELETE;
+                    ctcl_Mgr.delete_cnt++;
                     ctcl_process_delete_log (item);
                     break;
 
@@ -6214,7 +6242,7 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
 
                 if (ctcl_Mgr.need_stop_analyzer != CTC_TRUE)
                 {
-                    usleep (100 * 1000);
+                    sleep (10);
                     continue;
                 }
                 else
@@ -6310,7 +6338,7 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
                 if (final_log_hdr.append_lsa.pageid < 
                     ctcl_Mgr.log_info.final_lsa.pageid)
                 {
-                    usleep (10 * 1000);
+                    usleep (100 * 1000);
                     continue;
                 }
 
@@ -6318,7 +6346,7 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
                 {
                     retry_count++;
 
-                    usleep (3 * 1000 + (retry_count * 100));
+                    usleep (300 * 1000 + (retry_count * 100));
                     continue;
                 }
             }
@@ -6356,7 +6384,7 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
                     }
 
                     /* retry */
-                    usleep (10 * 1000);
+                    usleep (100 * 1000);
                     continue;
                 }
                 else
@@ -6370,7 +6398,7 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
             {
                 ctcl_decache_page_buffer (log_buf);
 
-                usleep (10 * 1000);
+                usleep (100 * 1000);
                 continue;
             }
 
@@ -6497,7 +6525,7 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
                 ctcl_Mgr.log_info.is_end_of_record == CTC_TRUE)
             {
                 /* DEBUG */
-                printf ("HERE2\n");
+//                printf ("HERE2\n");
                 /* it should be refetched and release */
                 ctcl_decache_page_buffer (log_buf);
             }

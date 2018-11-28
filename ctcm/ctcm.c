@@ -96,12 +96,19 @@ static void ctc_status (int signal)
     int registered_job_cnt = 0;
     int cur_processing_job_cnt = 0;
     int extracted_log_cnt = 0;
+    unsigned int insert_cnt = 0;
+    unsigned int update_cnt = 0;
+    unsigned int delete_cnt = 0;
+
 
     (void)ctcs_mgr_get_sg_cnt (&open_connection_cnt);
     registered_job_cnt = ctcs_mgr_total_registered_job_cnt ();
     cur_processing_job_cnt = ctcl_mgr_get_cur_job_cnt ();
 
     extracted_log_cnt = ctcl_mgr_get_extracted_log_cnt ();
+    insert_cnt = ctcl_mgr_get_insert_cnt ();
+    update_cnt = ctcl_mgr_get_update_cnt ();
+    delete_cnt = ctcl_mgr_get_delete_cnt ();
 
     fprintf (stdout, "\nPROCESS_STATUS: %s", proc_status_str[server_Status]);
     fprintf (stdout, "\nSTART_TIME: %s", start_time_string);
@@ -110,6 +117,9 @@ static void ctc_status (int signal)
     fprintf (stdout, "\nREGISTERED_JOB_COUNT: %d", registered_job_cnt);
     fprintf (stdout, "\nCURRENT_PROCESSING_JOB_COUNT: %d", cur_processing_job_cnt);
     fprintf (stdout, "\nEXTRACTED_LOG_COUNT: %d\n", extracted_log_cnt);
+    fprintf (stdout, "\nINSERT_STMT_COUNT: %d\n", insert_cnt);
+    fprintf (stdout, "\nUPDATE_STMT_COUNT: %d\n", update_cnt);
+    fprintf (stdout, "\nDELETE_STMT_COUNT: %d\n", delete_cnt);
     fflush (stdout);
 }
 

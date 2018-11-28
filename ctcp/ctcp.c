@@ -1851,7 +1851,7 @@ extern int ctcp_send_captured_data_result (void *inlink,
 
             write_data_len = 0;
 
-            while (remained_item_cnt > 0)
+            while (remained_item_cnt > 0 && next_log_item != NULL)
             {
                 if (next_log_item->stmt_type < CTCL_STMT_TYPE_INSERT || 
                     next_log_item->stmt_type > CTCL_STMT_TYPE_DELETE)
