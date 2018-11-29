@@ -35,7 +35,7 @@
 #define CTCL_DEFAULT_CACHE_BUFFER_SIZE            (100)
 #define CTCL_DEFAULT_LOG_PAGE_SIZE                (4096)
 #define CTCL_RETRY_COUNT                          (50)
-#define CTCL_TRANS_LOG_LIST_COUNT                 (3000)
+#define CTCL_TRANS_LOG_LIST_COUNT                 (4000)
 #define CTCL_NULL_VOLDES                          (-1)
 #define CTCL_NULL_OFFSET                          (-1)
 
@@ -47,7 +47,7 @@
 #define CTCL_LOGPAGEID_MAX                        (0x7fffffffffffLL)
 #define CTCL_LOGPB_HEADER_PAGE_ID                 (-9)
 
-#define CTCL_IO_DEFAULT_PAGE_SIZE                 (16 * 1024)
+#define CTCL_IO_DEFAULT_PAGE_SIZE                 (4 * 1024)
 #define CTCL_IO_MIN_PAGE_SIZE                     (4 * 1024)
 #define CTCL_IO_MAX_PAGE_SIZE                     (16 * 1024)
 
@@ -57,8 +57,8 @@
 #define CTCL_STATUS_BUSY                          (1)
 #define CTCL_STATUS_IDLE                          (0)
 #define CTCL_QUERY_BUF_SIZE                       (2048)
-#define CTCL_LOG_ITEM_MAX                         (1000)
-#define CTCL_DELAY_CNT                            (10)
+#define CTCL_LOG_ITEM_MAX                         (4000)
+#define CTCL_DELAY_CNT                            (40)
 #define CTCL_NUM_REPL_FILTER                      (50)
 #define CTCL_LOG_PATH_MAX                         (1024)
 #define CTCL_NAME_MAX                             (255)

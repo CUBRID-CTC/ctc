@@ -2557,23 +2557,6 @@ static CTCL_TRANS_LOG_LIST *ctcl_get_trans_log_list_set_tid (int tid)
  * Description : modified from la_log_copy_fromlog()
  *               copy a portion of the log
  *   
- *   rec_type(out)
- *   area: Area where the portion of the log is copied.
- *               (Set as a side effect)
- *   length: the length to copy (type change PGLENGTH -> int)
- *   log_pageid: log page identifier of the log data to copy
- *               (May be set as a side effect)
- *   log_offset: log offset within the log page of the log data to copy
- *               (May be set as a side effect)
- *   log_pgptr: the buffer containing the log page
- *               (May be set as a side effect)
- *
- * Note:
- *   Copy "length" bytes of the log starting at log_pageid,
- *   log_offset onto the given area.
- *
- *   area is set as a side effect.
- *   log_pageid, log_offset, and log_pgptr are set as a side effect.
  */
 static void ctcl_log_copy_fromlog (char *rec_type, 
                                    char *area, 
@@ -5270,13 +5253,6 @@ static int ctcl_get_relocation_recdes (CTCL_LOG_RECORD_HEADER *lrec,
  * Description : modified from la_get_recdes () 
  *               retrieves record description for the given lsa 
  *               from the log file
- *
- *    pgptr : pointer to the target log page
- *    old_recdes : old record description (output)
- *    recdes : record description (output)
- *    rcvindex : recovery index (output)
- *    log_data : log data area
- *    is_overflow : CTC_TRUE if the log data is in overflow page
  *
  */
 static int ctcl_get_recdes (CTCL_LOG_LSA *lsa, 

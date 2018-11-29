@@ -117,8 +117,8 @@ static void ctc_status (int signal)
     fprintf (stdout, "\nREGISTERED_JOB_COUNT: %d", registered_job_cnt);
     fprintf (stdout, "\nCURRENT_PROCESSING_JOB_COUNT: %d", cur_processing_job_cnt);
     fprintf (stdout, "\nEXTRACTED_LOG_COUNT: %d\n", extracted_log_cnt);
-    fprintf (stdout, "\nINSERT_STMT_COUNT: %d\n", insert_cnt);
-    fprintf (stdout, "\nUPDATE_STMT_COUNT: %d\n", update_cnt);
+    fprintf (stdout, "\nINSERT_STMT_COUNT: %d", insert_cnt);
+    fprintf (stdout, "\nUPDATE_STMT_COUNT: %d", update_cnt);
     fprintf (stdout, "\nDELETE_STMT_COUNT: %d\n", delete_cnt);
     fflush (stdout);
 }
