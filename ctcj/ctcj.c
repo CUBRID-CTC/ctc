@@ -29,6 +29,8 @@
 #include <pthread.h>
 #include <assert.h>
 #include <string.h>
+#include <time.h>
+#include <sys/time.h>
 
 #include "ctcp.h"
 #include "ctcg_conf.h"
@@ -863,6 +865,7 @@ extern void *ctcj_capture_thr_func (void *args)
     int biggest_tid;
     int sorted_trans_cnt;
     int cur_trans_cnt;
+    struct timeval finish_time;
     CTCS_JOB_SESSION *job_session = (CTCS_JOB_SESSION *)args;
     CTCJ_JOB_INFO *job = NULL;
     CTCL_TRANS_LOG_LIST *list = NULL;
@@ -932,6 +935,24 @@ extern void *ctcj_capture_thr_func (void *args)
 
             if (sorted_trans_cnt > 1)
             {
+//                if (ctcl_is_analyzer_started () == CTC_TRUE)
+
+                if (ctcl_get_elapse_time_init_flag () == CTC_TRUE)
+                {
+                    if (gettimeofday (&finish_time, NULL) == -1)
+                    {
+                        (void)fprintf (stderr, "Failure to obtain the log analyzing finish time.\n");
+                        exit (EXIT_FAILURE);
+                    }
+                    else
+                    {
+                        ctcl_mgr_set_finish_time ((finish_time.tv_sec) * 1000 + 
+                                                  (((double)(finish_time.tv_usec)) / 1000));
+
+                        ctcl_unset_elapse_time_init_flag ();
+                    }
+                }
+
                 /* sort trans_log_list */
                 qsort (trans_log_list[0], 
                        sorted_trans_cnt, 

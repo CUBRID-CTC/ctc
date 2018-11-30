@@ -448,7 +448,10 @@ struct ctcl_mgr
     CTCL_ARGS thr_args;
     CTCL_INFO log_info;
     pthread_t analyzer_thr;  
-    pthread_t trans_remover_thr;  
+    pthread_t trans_remover_thr;
+    BOOL elapse_time_init_flag;
+    double start_time;
+    double finish_time;
 //    CTCL_THREAD analyzer_thr;   
 //    CTC_JOB_REF_TABLE *job_ref_tbl;   /* job reference table */
 };
@@ -494,6 +497,7 @@ struct ctcl_ha_apply_info
 
 /* Global variable for LA */
 CTCL_MGR ctcl_Mgr;
+BOOL is_la_started = CTC_FALSE;
 
 
 /* static functions */
@@ -757,6 +761,8 @@ extern int ctcl_initialize (CTCL_CONF_ITEMS *conf_items,
     ctcl_Mgr.update_cnt = 0;
     ctcl_Mgr.delete_cnt = 0;
 
+    ctcl_Mgr.elapse_time_init_flag = CTC_FALSE;
+
     memset (ctcl_Mgr.src_db_name, 0, CTCL_NAME_MAX);
 
     strncpy (ctcl_Mgr.src_db_name, 
@@ -873,6 +879,18 @@ extern int ctcl_initialize (CTCL_CONF_ITEMS *conf_items,
     return result;
 }
 
+extern BOOL ctcl_is_analyzer_started (void)
+{
+    if (is_la_started == CTC_TRUE)
+    {
+        return CTC_TRUE;
+    }
+    else
+    {
+        return CTC_FALSE;
+    }
+}
+
 
 extern int ctcl_mgr_get_extracted_log_cnt (void)
 {
@@ -895,6 +913,42 @@ extern int ctcl_mgr_get_update_cnt (void)
 extern int ctcl_mgr_get_delete_cnt (void)
 {
     return ctcl_Mgr.delete_cnt;
+}
+
+
+extern BOOL ctcl_get_elapse_time_init_flag (void)
+{
+    return ctcl_Mgr.elapse_time_init_flag;
+}
+
+
+extern void ctcl_set_elapse_time_init_flag (void)
+{
+    ctcl_Mgr.elapse_time_init_flag = CTC_TRUE;
+}
+
+
+extern void ctcl_unset_elapse_time_init_flag (void)
+{
+    ctcl_Mgr.elapse_time_init_flag = CTC_FALSE;
+}
+
+
+extern double ctcl_mgr_get_start_time (void)
+{
+    return ctcl_Mgr.start_time;
+}
+
+
+extern double ctcl_mgr_get_finish_time (void)
+{
+    return ctcl_Mgr.finish_time;
+}
+
+
+extern void ctcl_mgr_set_finish_time (double finish_time)
+{
+    ctcl_Mgr.finish_time = finish_time;
 }
 
 
@@ -6153,6 +6207,7 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
     int valid_pg_read_cnt = 0;
     int now = 0, last_eof_time = 0;
     struct log_header final_log_hdr;
+    struct timeval start_time;
     CTCL_CACHE_BUFFER *log_buf = NULL;
     CTCL_LOG_PAGE *pg_ptr;
     CTCL_TRANS_LOG_LIST *trans = NULL;
@@ -6387,6 +6442,30 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
             ctcl_Mgr.first_tid = ctcl_Mgr.last_tid + 1;
 //            printf("valid page read count = %d\n", valid_pg_read_cnt);
 
+//                if (is_la_started != CTC_TRUE)
+
+            if (ctcl_get_elapse_time_init_flag () == CTC_FALSE)
+            {
+                if (gettimeofday (&start_time, NULL) == -1)
+                {
+                    (void)fprintf (stderr, "Failure to obtain the log analyzing start time.\n");
+                    exit (EXIT_FAILURE);
+                }
+                else
+                {
+                    ctcl_Mgr.finish_time = 0;
+                    ctcl_Mgr.start_time = (start_time.tv_sec) * 1000 + 
+                        ((double)(start_time.tv_usec)) / 1000;
+
+                    ctcl_set_elapse_time_init_flag ();
+                    //                        is_la_started = CTC_TRUE;
+                }
+            }
+            else
+            {
+                /* nothing to do */
+            }
+
             while (ctcl_Mgr.log_info.final_lsa.pageid == log_buf->pageid && 
                    ctcl_Mgr.need_stop_analyzer == CTC_FALSE)
             {
@@ -6471,6 +6550,7 @@ static void *ctcl_log_analyzer_thr_func (void *ctcl_args)
 //                printf ("\nBEFORE PROCESS RECORD: ctcl_Mgr.log_info.final_lsa.pageid = %d\n",
 //                        ctcl_Mgr.log_info.final_lsa.pageid);
 //
+
                 /* process the log record */
                 result = ctcl_log_record_process (lrec, 
                                                   &ctcl_Mgr.log_info.final_lsa, 

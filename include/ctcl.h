@@ -220,10 +220,17 @@ extern int ctcl_initialize (CTCL_CONF_ITEMS *conf_items,
 extern void ctcl_finalize(void);
 
 /* log manager functions */
+extern BOOL ctcl_get_elapse_time_init_flag (void);
+extern void ctcl_set_elapse_time_init_flag (void);
+extern void ctcl_unset_elapse_time_init_flag (void);
 extern int ctcl_mgr_get_extracted_log_cnt (void);
+extern BOOL ctcl_is_analyzer_started (void);
 extern int ctcl_mgr_get_insert_cnt (void);
 extern int ctcl_mgr_get_update_cnt (void);
 extern int ctcl_mgr_get_delete_cnt (void);
+extern double ctcl_mgr_get_start_time (void);
+extern double ctcl_mgr_get_finish_time (void);
+extern void ctcl_mgr_set_finish_time (double finish_time);
 extern int ctcl_mgr_lock (void);
 extern int ctcl_mgr_unlock (void);
 extern int ctcl_mgr_get_status_nolock (void);

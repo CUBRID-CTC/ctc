@@ -99,7 +99,8 @@ static void ctc_status (int signal)
     unsigned int insert_cnt = 0;
     unsigned int update_cnt = 0;
     unsigned int delete_cnt = 0;
-
+    double la_start_time;
+    double la_finish_time;
 
     (void)ctcs_mgr_get_sg_cnt (&open_connection_cnt);
     registered_job_cnt = ctcs_mgr_total_registered_job_cnt ();
@@ -109,6 +110,8 @@ static void ctc_status (int signal)
     insert_cnt = ctcl_mgr_get_insert_cnt ();
     update_cnt = ctcl_mgr_get_update_cnt ();
     delete_cnt = ctcl_mgr_get_delete_cnt ();
+    la_start_time = ctcl_mgr_get_start_time ();
+    la_finish_time = ctcl_mgr_get_finish_time ();
 
     fprintf (stdout, "\nPROCESS_STATUS: %s", proc_status_str[server_Status]);
     fprintf (stdout, "\nSTART_TIME: %s", start_time_string);
@@ -116,6 +119,14 @@ static void ctc_status (int signal)
     fprintf (stdout, "\nOPEN_CONNECTION_COUNT: %d", open_connection_cnt);
     fprintf (stdout, "\nREGISTERED_JOB_COUNT: %d", registered_job_cnt);
     fprintf (stdout, "\nCURRENT_PROCESSING_JOB_COUNT: %d", cur_processing_job_cnt);
+    fprintf (stdout, "\nLOG_ANALYZING_START_TIME(msec): %lf", la_start_time);
+
+    if (la_finish_time > 0)
+    {
+        fprintf (stdout, "\nLOG_ANALYZING_FINISH_TIME(msec): %lf", la_finish_time);
+        fprintf (stdout, "\nLOG_ANALYZING_ELAPSE_TIME(msec): %lf", la_finish_time - la_start_time);
+    }
+
     fprintf (stdout, "\nEXTRACTED_LOG_COUNT: %d\n", extracted_log_cnt);
     fprintf (stdout, "\nINSERT_STMT_COUNT: %d", insert_cnt);
     fprintf (stdout, "\nUPDATE_STMT_COUNT: %d", update_cnt);
@@ -130,6 +141,7 @@ int main (int argc, char **argv)
     int stage = 0;
     int thr_ret;
     unsigned short ctc_port;
+
     char *log_path;
     char *env_root;
     char ctc_root_name[] = "CUBRID";
